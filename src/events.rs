@@ -58,8 +58,7 @@ pub const EV_CONDITIONAL_ARMED: &str = "exchange8:oms:conditional:armed";
 pub const EV_CONDITIONAL_RELEASED: &str = "exchange8:oms:conditional:released";
 /// `exchange8:oms:conditional:sibling-cancelled` — an OCO/OCA sibling
 /// cancelled (group semantics resolved in the engine).
-pub const EV_CONDITIONAL_SIBLING_CANCELLED: &str =
-    "exchange8:oms:conditional:sibling-cancelled";
+pub const EV_CONDITIONAL_SIBLING_CANCELLED: &str = "exchange8:oms:conditional:sibling-cancelled";
 /// `exchange8:oms:algo:started` — an algo parent began running
 /// (`oms.algo_order.state = running`).
 pub const EV_ALGO_STARTED: &str = "exchange8:oms:algo:started";
@@ -179,11 +178,7 @@ pub enum ConditionalOp {
 /// Envelope for a conditional-order mutation: `snapshot` carries the
 /// conditional identity (order id, condition type, trigger terms, trigger
 /// reference at fire time, group id when grouped).
-pub fn conditional_event(
-    op: ConditionalOp,
-    snapshot: Value,
-    identity: &EventIdentity,
-) -> Value {
+pub fn conditional_event(op: ConditionalOp, snapshot: Value, identity: &EventIdentity) -> Value {
     let event_type = match op {
         ConditionalOp::Armed => EV_CONDITIONAL_ARMED,
         ConditionalOp::Released => EV_CONDITIONAL_RELEASED,
@@ -369,7 +364,11 @@ mod tests {
             algo_event(AlgoOp::Resumed, json!({ "state": "running" }), &identity),
             algo_event(AlgoOp::ChildIssued, json!({ "slice": 1 }), &identity),
             algo_event(AlgoOp::Completed, json!({ "state": "complete" }), &identity),
-            algo_event(AlgoOp::Cancelled, json!({ "state": "cancelled" }), &identity),
+            algo_event(
+                AlgoOp::Cancelled,
+                json!({ "state": "cancelled" }),
+                &identity,
+            ),
         ] {
             assert!(envelope["event_type"].as_str().is_some());
             assert_eq!(envelope["env_id"], identity.env_id.to_string());

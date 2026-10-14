@@ -48,10 +48,7 @@ fn extend_router(
         )
         // Data endpoints (RFW data fetch + POST aliases — the renderer
         // only supports POST).
-        .route(
-            "/v1/admin/pegs",
-            axum::routing::post(runtime::admin_pegs),
-        )
+        .route("/v1/admin/pegs", axum::routing::post(runtime::admin_pegs))
         .route(
             "/v1/admin/conditionals",
             axum::routing::post(runtime::admin_conditionals),

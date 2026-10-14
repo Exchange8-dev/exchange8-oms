@@ -171,7 +171,7 @@ impl ConditionalOrder {
         } else {
             reference <= self.trigger_price
         };
-        fired.then(|| TriggerAction::Release {
+        fired.then_some(TriggerAction::Release {
             order_id: self.order_id,
             is_buy: self.is_buy,
             limit_price: self.limit_price,
@@ -749,7 +749,9 @@ mod tests {
         let actions = e.on_index(&index_pub(9, 21_000));
         assert_eq!(actions.len(), 1);
         let TriggerAction::Release {
-            order_id, limit_price, ..
+            order_id,
+            limit_price,
+            ..
         } = &actions[0]
         else {
             panic!()
@@ -816,15 +818,9 @@ mod tests {
         let mut e = TriggerEngine::new();
         // Three unrelated orders sharing one OCA group (entered
         // independently — the OCA distinction: no constructed bracket).
-        e.hold(
-            ConditionalOrder::stop(31, 7, true, TriggerRef::Last, 10_100, None).in_group(50),
-        );
-        e.hold(
-            ConditionalOrder::stop(32, 7, false, TriggerRef::Last, 9_500, None).in_group(50),
-        );
-        e.hold(
-            ConditionalOrder::stop(33, 7, false, TriggerRef::Bid, 9_400, None).in_group(50),
-        );
+        e.hold(ConditionalOrder::stop(31, 7, true, TriggerRef::Last, 10_100, None).in_group(50));
+        e.hold(ConditionalOrder::stop(32, 7, false, TriggerRef::Last, 9_500, None).in_group(50));
+        e.hold(ConditionalOrder::stop(33, 7, false, TriggerRef::Bid, 9_400, None).in_group(50));
         // The buy stop fires: legs 32 AND 33 both cancel (one-cancels-ALL).
         let actions = e.on_tick(&tick(7, 10_100, 10_050, 10_150));
         assert_eq!(actions.len(), 3);
@@ -846,15 +842,9 @@ mod tests {
     #[test]
     fn oca_client_cancel_withdraws_the_whole_group() {
         let mut e = TriggerEngine::new();
-        e.hold(
-            ConditionalOrder::stop(41, 7, true, TriggerRef::Last, 10_100, None).in_group(60),
-        );
-        e.hold(
-            ConditionalOrder::stop(42, 7, false, TriggerRef::Last, 9_500, None).in_group(60),
-        );
-        e.hold(
-            ConditionalOrder::stop(43, 7, false, TriggerRef::Last, 9_400, None).in_group(61),
-        );
+        e.hold(ConditionalOrder::stop(41, 7, true, TriggerRef::Last, 10_100, None).in_group(60));
+        e.hold(ConditionalOrder::stop(42, 7, false, TriggerRef::Last, 9_500, None).in_group(60));
+        e.hold(ConditionalOrder::stop(43, 7, false, TriggerRef::Last, 9_400, None).in_group(61));
         // Cancel ANY member of the OCA group → all members withdrawn.
         let actions = e.cancel(42);
         assert_eq!(actions.len(), 1);
@@ -873,12 +863,8 @@ mod tests {
     #[test]
     fn oca_fired_member_cannot_double_fire() {
         let mut e = TriggerEngine::new();
-        e.hold(
-            ConditionalOrder::stop(51, 7, true, TriggerRef::Last, 10_100, None).in_group(70),
-        );
-        e.hold(
-            ConditionalOrder::stop(52, 7, true, TriggerRef::Last, 10_050, None).in_group(70),
-        );
+        e.hold(ConditionalOrder::stop(51, 7, true, TriggerRef::Last, 10_100, None).in_group(70));
+        e.hold(ConditionalOrder::stop(52, 7, true, TriggerRef::Last, 10_050, None).in_group(70));
         // One tick takes both above their stops: BOTH fire (independent
         // evaluations — OCA cancels only survivors, never a fired leg).
         let actions = e.on_tick(&tick(7, 10_200, 10_150, 10_250));

@@ -302,7 +302,7 @@ impl AlgoEngine {
                 // Weight = this interval's profile share of the profile tail.
                 let start = self.fired as usize;
                 let tail: u64 = self.profile[start..].iter().sum();
-                let w = *self.profile.get(start).unwrap_or(&1) as u64;
+                let w = *self.profile.get(start).unwrap_or(&1);
                 let base = if tail == 0 {
                     self.remaining.raw / intervals_left as u64
                 } else {

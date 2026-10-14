@@ -50,8 +50,14 @@ fn router() -> axum::Router {
         .route("/v1/admin/pegs", post(runtime::admin_pegs))
         .route("/v1/admin/conditionals", post(runtime::admin_conditionals))
         .route("/v1/admin/algo-orders", post(runtime::admin_algo_orders))
-        .route("/v1/admin/algo-orders/{id}/pause", post(runtime::pause_algo_order))
-        .route("/v1/admin/algo-orders/{id}/resume", post(runtime::resume_algo_order))
+        .route(
+            "/v1/admin/algo-orders/{id}/pause",
+            post(runtime::pause_algo_order),
+        )
+        .route(
+            "/v1/admin/algo-orders/{id}/resume",
+            post(runtime::resume_algo_order),
+        )
         .with_state(test_state())
 }
 
@@ -181,7 +187,10 @@ async fn admin_ui_pages_are_mounted() {
 fn registration_admin_ui_pages_match_the_router() {
     // `--print-registration` declares `pegs` / `conditionals` + the algos
     // surface; the runtime's page set matches 1:1.
-    let declared: Vec<&str> = registration::ADMIN_UI_PAGES.iter().map(|p| p.route).collect();
+    let declared: Vec<&str> = registration::ADMIN_UI_PAGES
+        .iter()
+        .map(|p| p.route)
+        .collect();
     let served: Vec<&str> = runtime::admin_pages::oms_pages()
         .into_iter()
         .map(|p| p.slug)

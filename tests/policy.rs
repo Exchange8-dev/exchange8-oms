@@ -251,5 +251,4 @@ fn declared_set_passes_enroll_dry_run() {
 
 /// Every action the OMS handlers evaluate (step-5 targets). The
 /// mirror set must cover each one — see `declared_mirror_covers_every_handler_action`.
-pub(crate) const HANDLER_ACTIONS: &[&str] =
-    &["exchange8:order:route", "exchange8:algo:write"];
+pub(crate) const HANDLER_ACTIONS: &[&str] = &["exchange8:order:route", "exchange8:algo:write"];

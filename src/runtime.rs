@@ -72,6 +72,7 @@ pub const INSTRUMENT_PEG_CAP: usize = 5_000;
 /// One shard's runtime state: the trigger engine + the quote cache + the
 /// peg list. Owned by exactly one task; the mutex guards only cross-task
 /// handoff at the admin snapshot (never a hot-path evaluation).
+#[derive(Default)]
 pub struct ShardRuntime {
     /// Held conditional orders (`stop_*`/`trailing_stop`/`oco`/`oca`).
     pub triggers: crate::triggers::TriggerEngine,
@@ -81,15 +82,6 @@ pub struct ShardRuntime {
     pub pegs: HashMap<u64, crate::peg_machine::PegOrder>,
 }
 
-impl Default for ShardRuntime {
-    fn default() -> Self {
-        ShardRuntime {
-            triggers: crate::triggers::TriggerEngine::new(),
-            quotes: QuoteCache::new(),
-            pegs: HashMap::new(),
-        }
-    }
-}
 
 /// The process-wide shard runtimes (set once at boot; the admin handlers
 /// read through the shared map, the consumer routes via the sender map).
@@ -116,11 +108,7 @@ pub fn instrument_of(peg: &crate::peg_machine::PegOrder) -> Option<u32> {
 /// instrument in its id (the supervisor's registry map `peg_id →
 /// instrument_id` mirrors the Gateway id restore — DESIGN.md §4.1 record).
 fn instrument_index(peg_id: u64) -> Option<u32> {
-    INSTRUMENT_INDEX
-        .lock()
-        .unwrap()
-        .get(&peg_id)
-        .copied()
+    INSTRUMENT_INDEX.lock().unwrap().get(&peg_id).copied()
 }
 
 /// The peg registries — process-wide sharded-lock maps (the registration
@@ -241,20 +229,19 @@ fn stage_armed_mirror(order: &ConditionalOrder) {
 
 /// Project one trigger-engine action set into the egress stage (the
 /// conditional family mirrors — release + sibling-cancel pairs).
-fn project_trigger_actions(
-    instrument_id: u32,
-    actions: Vec<crate::triggers::TriggerAction>,
-) {
+fn project_trigger_actions(instrument_id: u32, actions: Vec<crate::triggers::TriggerAction>) {
     for action in actions {
         let identity = EventIdentity {
             env_id: sentin8::config::SYSTEM_ENV_ID,
             subject_id: "exchange8:oms".into(),
             correlation_id: Uuid::new_v4().to_string(),
             idempotency_key: match &action {
-                crate::triggers::TriggerAction::Release { order_id, .. } =>
-                    format!("conditional-released:{order_id}"),
-                crate::triggers::TriggerAction::CancelSibling { order_id, .. } =>
-                    format!("conditional-sibling:{order_id}"),
+                crate::triggers::TriggerAction::Release { order_id, .. } => {
+                    format!("conditional-released:{order_id}")
+                }
+                crate::triggers::TriggerAction::CancelSibling { order_id, .. } => {
+                    format!("conditional-sibling:{order_id}")
+                }
             },
         };
         let (op, snapshot) = match &action {
@@ -293,10 +280,15 @@ fn project_trigger_actions(
 
 /// The pegs of one instrument (the shard's peg map is small; the scan is
 /// the change-driven re-evaluation set).
-fn pegs_on(pegs: &HashMap<u64, crate::peg_machine::PegOrder>, instrument_id: u32) -> Vec<(u64, u32)> {
+fn pegs_on(
+    pegs: &HashMap<u64, crate::peg_machine::PegOrder>,
+    instrument_id: u32,
+) -> Vec<(u64, u32)> {
     pegs.keys()
         .filter_map(|id| {
-            instrument_index(*id).filter(|i| *i == instrument_id).map(|i| (*id, i))
+            instrument_index(*id)
+                .filter(|i| *i == instrument_id)
+                .map(|i| (*id, i))
         })
         .collect()
 }
@@ -444,7 +436,10 @@ pub async fn register_peg(
     }
     let peg = crate::peg_machine::PegOrder::new(peg_id, kind, side, offset, limit);
     shard.pegs.insert(peg_id, peg);
-    INSTRUMENT_INDEX.lock().unwrap().insert(peg_id, instrument_id);
+    INSTRUMENT_INDEX
+        .lock()
+        .unwrap()
+        .insert(peg_id, instrument_id);
     PEG_ENV.lock().unwrap().insert(peg_id, env_id);
     // The received mirror + the booked-at-limit ack ride the egress stage
     // (the intake is a durable mutation of the supervision surface's
@@ -675,10 +670,9 @@ async fn quote_consumer(core: &Arc<AppState>) -> anyhow::Result<()> {
                     .await;
                 continue;
             }
-            let payload = match serde_json::from_value::<
-                exchange8::contracts::events::BboUpdated,
-            >(msg.payload.clone())
-            {
+            let payload = match serde_json::from_value::<exchange8::contracts::events::BboUpdated>(
+                msg.payload.clone(),
+            ) {
                 Ok(p) => p,
                 Err(e) => {
                     tracing::warn!(error = %e, "oms quote consumer: malformed BBO payload; skipped");
@@ -735,7 +729,11 @@ pub async fn runtime_algo_counts(state: &Arc<AppState>) -> (u64, u64) {
             .fetch_all(&state.pool)
             .await
             .unwrap_or_else(|_| vec![SYSTEM_ENV_ID]);
-    let envs = if envs.is_empty() { vec![SYSTEM_ENV_ID] } else { envs };
+    let envs = if envs.is_empty() {
+        vec![SYSTEM_ENV_ID]
+    } else {
+        envs
+    };
     let mut running = 0u64;
     let mut slices = 0u64;
     for env_id in envs {
@@ -764,17 +762,15 @@ pub async fn runtime_algo_counts(state: &Arc<AppState>) -> (u64, u64) {
 
 /// The running parents + total child slices (the durable counts).
 async fn algo_counts(state: &Arc<AppState>) -> anyhow::Result<(u64, u64)> {
-    let running: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM oms.algo_order WHERE state = $1")
-            .bind(ALGO_STATE_RUNNING)
-            .fetch_one(&state.pool)
-            .await
-            .map_err(|e| anyhow::anyhow!(e))?;
-    let slices: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM oms.algo_child_order")
-            .fetch_one(&state.pool)
-            .await
-            .map_err(|e| anyhow::anyhow!(e))?;
+    let running: i64 = sqlx::query_scalar("SELECT count(*) FROM oms.algo_order WHERE state = $1")
+        .bind(ALGO_STATE_RUNNING)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
+    let slices: i64 = sqlx::query_scalar("SELECT count(*) FROM oms.algo_child_order")
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
     Ok((running.max(0) as u64, slices.max(0) as u64))
 }
 
@@ -962,14 +958,13 @@ pub async fn algo_state_transition(
     let mut conn = state.pool.acquire().await.map_err(sentin8::shell::err_db)?;
     let mut tx = conn.begin().await.map_err(sentin8::shell::err_db)?;
     sentin8::shell::set_tenant_context(&mut tx, a.env_id()).await;
-    let current: Option<String> = sqlx::query_scalar(
-        "SELECT state FROM oms.algo_order WHERE id = $1 AND env_id = $2",
-    )
-    .bind(algo_id)
-    .bind(a.env_id())
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(sentin8::shell::err_db)?;
+    let current: Option<String> =
+        sqlx::query_scalar("SELECT state FROM oms.algo_order WHERE id = $1 AND env_id = $2")
+            .bind(algo_id)
+            .bind(a.env_id())
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(sentin8::shell::err_db)?;
     let Some(current) = current else {
         tx.rollback().await.map_err(sentin8::shell::err_db)?;
         return Err((StatusCode::NOT_FOUND, "algo order not found".into()));
@@ -981,14 +976,16 @@ pub async fn algo_state_transition(
             format!("algo order in state '{current}', expected '{from}'"),
         ));
     }
-    sqlx::query("UPDATE oms.algo_order SET state = $3 WHERE id = $1 AND env_id = $2 AND state = $4")
-        .bind(algo_id)
-        .bind(a.env_id())
-        .bind(to)
-        .bind(from)
-        .execute(&mut *tx)
-        .await
-        .map_err(sentin8::shell::err_db)?;
+    sqlx::query(
+        "UPDATE oms.algo_order SET state = $3 WHERE id = $1 AND env_id = $2 AND state = $4",
+    )
+    .bind(algo_id)
+    .bind(a.env_id())
+    .bind(to)
+    .bind(from)
+    .execute(&mut *tx)
+    .await
+    .map_err(sentin8::shell::err_db)?;
     let identity = EventIdentity {
         env_id: a.env_id(),
         subject_id: a.claims.sub.clone(),
@@ -1020,7 +1017,9 @@ pub async fn algo_state_transition(
     .await
     .map_err(sentin8::shell::err_db)?;
     tx.commit().await.map_err(sentin8::shell::err_db)?;
-    Ok(Json(serde_json::json!({ "id": algo_id.to_string(), "state": to })))
+    Ok(Json(
+        serde_json::json!({ "id": algo_id.to_string(), "state": to }),
+    ))
 }
 
 // ---------------------------------------------------------------------------
@@ -1457,7 +1456,7 @@ pub mod admin_pages {
                     "icon must be a Material code point (hex): {icon}"
                 );
                 assert!(v["scope"].as_str().unwrap().starts_with("exchange8:"));
-                assert!(v["sections"].as_array().unwrap().len() >= 1);
+                assert!(!v["sections"].as_array().unwrap().is_empty());
             }
         }
 
@@ -1510,8 +1509,10 @@ mod tests {
             "colons are structurally impossible in a stream family"
         );
         assert!(
-            sentin8::bus::outbox::validate_stream_family(QUOTE_CONSUMER_GROUP.replace('-', "").as_str())
-                .is_ok(),
+            sentin8::bus::outbox::validate_stream_family(
+                QUOTE_CONSUMER_GROUP.replace('-', "").as_str()
+            )
+            .is_ok(),
             "consumer group charset (the ident rules without the reserved-prefix check)"
         );
     }
@@ -1537,9 +1538,8 @@ mod tests {
             },
             valkey_url: String::new(),
         });
-        let pool =
-            sqlx::PgPool::connect_lazy("postgresql://invalid:invalid@127.0.0.1:5/none")
-                .expect("lazy pool");
+        let pool = sqlx::PgPool::connect_lazy("postgresql://invalid:invalid@127.0.0.1:5/none")
+            .expect("lazy pool");
         let core = Arc::new(sentin8::shell::AppState {
             config,
             pool: pool.clone(),
@@ -1586,13 +1586,7 @@ mod tests {
             let shard = shards.get(&s).unwrap().lock().await;
             if shard.pegs.values().next().unwrap().status_key() == "executing" {
                 assert_eq!(
-                    shard
-                        .pegs
-                        .values()
-                        .next()
-                        .unwrap()
-                        .working()
-                        .map(|p| p.raw),
+                    shard.pegs.values().next().unwrap().working().map(|p| p.raw),
                     Some(10_000),
                     "Primary bid = bid + offset = 9_900 + 100"
                 );
