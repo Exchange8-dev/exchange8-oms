@@ -1,17 +1,17 @@
-# README.md: Ex8:OMS
+# README.md: Exchange8:OMS
 
 ## 1. Summary
 
-Ex8:OMS (Order Management System) is the peg/iceberg supervision and
+Exchange8:OMS (Order Management System) is the peg/iceberg supervision and
 conditional-order trigger engine of the exchange8 vertical — the
 capital-markets matching tier of the Sentin8 platform. It supervises
 **pegged orders** (primary / market / midpoint peg, dark variant), slices
 **iceberg orders** into display slices at the matching engine, and holds
 **stop / stop-limit / trailing-stop / conditional (OCO, bracket) orders** in
-its trigger engine, releasing them to Ex8:ME only when their trigger fires
+its trigger engine, releasing them to Exchange8:ME only when their trigger fires
 (they never rest in the ME book). It is a *pricing and scheduling engine*,
 not a classic order-management system: order states above the fill are
-owned by Ex8:Gateway, books and fills by Ex8:ME; OMS owns the peg state
+owned by Exchange8:Gateway, books and fills by Exchange8:ME; OMS owns the peg state
 machine, slice plans, and trigger conditions. The service binary wraps the
 pure order-type cores in the Sentin8 platform shell (`sentin8::shell`):
 axum HTTP/TLS surface, `--print-registration` self-registration, DB pool,
@@ -65,12 +65,12 @@ tables, the local outbox, and the audit journal.
 ```mermaid
 graph TD
     subgraph Upstream["Upstream callers (Sentin8 M2M, cert-bound)"]
-        GW["Ex8:Gateway"]
-        MDE["Ex8:MD / Ex8:VFeeds (quote events)"]
-        MEE["Ex8:ME (lifecycle events)"]
+        GW["Exchange8:Gateway"]
+        MDE["Exchange8:MD / Exchange8:VFeeds (quote events)"]
+        MEE["Exchange8:ME (lifecycle events)"]
     end
 
-    subgraph OMS["Ex8:OMS process (exchange8-oms)"]
+    subgraph OMS["Exchange8:OMS process (exchange8-oms)"]
         REG["registration.rs — self-description (roles, scopes, error codes, admin UI, SQL, M2M grants)"]
         SHELL["sentin8::shell — DB pool EXCHANGE8_OMS_DATABASE_URL, /v1/health, graceful drain"]
         ADMIN["Shield policy-admin API + RFW pages (pegs/conditionals/algos) + algo pause/resume + /v1/health"]
@@ -138,7 +138,7 @@ and pricing tests exact.
   order watches one reference price (last / bid / ask) at a trigger
   threshold; trailing stops ratchet the threshold monotonically behind the
   best reference seen (buy stops trail down, sell stops trail up, never
-  loosening). A fired order is released to Ex8:ME as market or
+  loosening). A fired order is released to Exchange8:ME as market or
   stop-limit (limit carried on the release); OCO/OCA group semantics resolve
   sibling cancellations in the engine, not per-order.
 - **OCO registry & brackets** (`OcoRegistry`) — id-driven groups where the

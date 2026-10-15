@@ -1,8 +1,8 @@
-# DESIGN.md: Ex8:OMS — Detailed Design Document
+# DESIGN.md: Exchange8:OMS — Detailed Design Document
 
 ## 1. Scope & Context
 
-Ex8:OMS owns the peg/iceberg supervision domain and the conditional-order
+Exchange8:OMS owns the peg/iceberg supervision domain and the conditional-order
 trigger domain inside one environment: the peg price formulas and the peg
 state machine, iceberg display-slice reserve accounting, TWAP/VWAP/POV
 slice scheduling, MOC/MOO auction queueing, the stop/stop-limit/trailing
@@ -10,15 +10,15 @@ trigger engine with OCO/OCA groups, complex-order atomic evaluation, the
 quote cache driving re-evaluation, and the child-order id lease +
 idempotency gate. It explicitly does **not** own:
 
-- client protocols and session state (FIX / SOUP / ITCH) — Ex8:Gateway
+- client protocols and session state (FIX / SOUP / ITCH) — Exchange8:Gateway
   terminates those and forwards peg management;
-- the matching books and fills — Ex8:ME owns both; OMS submits/replaces/
+- the matching books and fills — Exchange8:ME owns both; OMS submits/replaces/
   withdraws working slices and receives lifecycle events;
-- pre-trade risk authorization — Ex8:Risk gates upstream (OMS only
+- pre-trade risk authorization — Exchange8:Risk gates upstream (OMS only
   re-validates tick compliance of computed peg prices);
-- market-data book assembly — Ex8:MD / Ex8:VFeeds publish the BBO/EBBO
+- market-data book assembly — Exchange8:MD / Exchange8:VFeeds publish the BBO/EBBO
   quote events OMS consumes;
-- trade persistence and clearing — Ex8:Clearing consumes the event stream;
+- trade persistence and clearing — Exchange8:Clearing consumes the event stream;
 - identity, policy, event durability, audit delivery — platform planes via
   the shell and the local outbox/journal tables below.
 
@@ -27,11 +27,11 @@ idempotency gate. It explicitly does **not** own:
 ```mermaid
 graph TD
     subgraph Env["exchange8 environment (one env_id per tenant env)"]
-        GW["Ex8:Gateway"]
-        OMS["Ex8:OMS (exchange8-oms)"]
-        ME["Ex8:ME"]
-        MD["Ex8:MD / Ex8:VFeeds"]
-        SOR["Ex8:SOR"]
+        GW["Exchange8:Gateway"]
+        OMS["Exchange8:OMS (exchange8-oms)"]
+        ME["Exchange8:ME"]
+        MD["Exchange8:MD / Exchange8:VFeeds"]
+        SOR["Exchange8:SOR"]
     end
     AUTH["Sentin8:Auth (M2M issuance, JWKS)"]
     BUS["Sentin8:Bus"]
@@ -169,9 +169,9 @@ graph TD
 ```mermaid
 sequenceDiagram
     autonumber
-    participant GW as Ex8:Gateway
-    participant OMS as Ex8:OMS (peg supervisor)
-    participant ME as Ex8:ME
+    participant GW as Exchange8:Gateway
+    participant OMS as Exchange8:OMS (peg supervisor)
+    participant ME as Exchange8:ME
     participant OUT as Egress (outbox relay)
 
     GW->>OMS: AddPegOrder (framed, M2M exchange8:order:write, idempotency token)
@@ -210,9 +210,9 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant GW as Ex8:Gateway
-    participant OMS as Ex8:OMS (iceberg state)
-    participant ME as Ex8:ME
+    participant GW as Exchange8:Gateway
+    participant OMS as Exchange8:OMS (iceberg state)
+    participant ME as Exchange8:ME
     participant OUT as Egress (outbox relay)
 
     GW->>OMS: iceberg order (total qty, max_floor display)
@@ -240,9 +240,9 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant MD as Ex8:MD / Ex8:VFeeds
-    participant OMS as Ex8:OMS (TriggerEngine)
-    participant ME as Ex8:ME
+    participant MD as Exchange8:MD / Exchange8:VFeeds
+    participant OMS as Exchange8:OMS (TriggerEngine)
+    participant ME as Exchange8:ME
     participant OUT as Egress (outbox relay)
 
     GW->>OMS: stop / stop-limit / trailing register (held; never rests in ME book)
@@ -275,7 +275,7 @@ sequenceDiagram
     autonumber
     participant UI as Sentin8:Dash (RFW)
     participant BFF as Sentin8:BFF
-    participant OMS as Ex8:OMS admin routes
+    participant OMS as Exchange8:OMS admin routes
     participant SHIELD as Shield engine cache
     UI->>BFF: POST /proxy/exchange8-oms/v1/admin/policy-sets (bearer user token, exchange8:oms:policy:write)
     BFF->>OMS: delegated call (cert-bound M2M, act= originating user)
@@ -444,7 +444,7 @@ stateDiagram-v2
     Armed --> Released: reference breaches trigger (buy ≥ stop; sell ≤ stop)
     Armed --> CancelledByClient: client cancel (siblings cancel in group)
     Armed --> CancelledSibling: OCO sibling fired / cancelled first
-    Released --> [*]: order lives as market/stop-limit in Ex8:ME
+    Released --> [*]: order lives as market/stop-limit in Exchange8:ME
     Cancelled --> [*]
     CancelledSibling --> [*]
     note right of Armed : durable skeleton (oms.conditional_order) held here, never in the ME book
@@ -488,9 +488,9 @@ audited mutations journal a paired `oms.audit_journal` row):
 | `exchange8:oms:algo:started`/`paused`/`resumed`/`completed`/`cancelled` | The durable `oms.algo_order.state` transitions (guarded; same-tx event + audit) |
 | `exchange8:oms:algo:child-issued` | A child slice recorded (`issue_algo_step`; front-row idempotency) |
 
-Consumers: Ex8:Clearing (audit/clearing mirror), Ex8:Gateway (client
+Consumers: Exchange8:Clearing (audit/clearing mirror), Exchange8:Gateway (client
 confirmations). Inbound events/messages this service consumes: the
-consolidated BBO quote events (Ex8:MD / Ex8:VFeeds —
+consolidated BBO quote events (Exchange8:MD / Exchange8:VFeeds —
 `exchange8:md:bbo:updated`, family `exchange8`, payload
 `exchange8::contracts::events::BboUpdated`), ME lifecycle events (booked /
 killed / modified / executed / rejected / repriced), Shield policy-set
@@ -510,9 +510,9 @@ last evaluation (quote-stall semantics, §6) in the interim.
 ```mermaid
 sequenceDiagram
     autonumber
-    participant GW2 as Ex8:Gateway
-    participant OMS2 as Ex8:OMS
-    participant ME2 as Ex8:ME
+    participant GW2 as Exchange8:Gateway
+    participant OMS2 as Exchange8:OMS
+    participant ME2 as Exchange8:ME
     participant BUS3 as Sentin8:Bus
     GW2->>OMS2: AddPegOrder (framed, cert-bound M2M, exchange8:order:route)
     OMS2->>OMS2: evaluate quote → compute_peg_price → PegAction
@@ -539,7 +539,7 @@ flowchart TD
     E -->|network/5xx| G["relay_attempts++; leave unrelayed; backoff retry"]
     G --> B
     F --> H["Bus stream family (XADD)"]
-    H -->|direct consumer| I1["Ex8:Clearing consumes (audit / clearing mirror)"]
+    H -->|direct consumer| I1["Exchange8:Clearing consumes (audit / clearing mirror)"]
     H -->|subscription| I3["Trigger subscription (consumer group) → function / workflow where declared"]
 ```
 
@@ -571,7 +571,7 @@ flowchart TD
   ack, duplicate cancels converge, and the `IdempotencyGate` returns the
   originally assigned child id on duplicate client keys.
 - **Rate limiting / backpressure.** OMS relies on upstream session and
-  risk limits (Ex8:Gateway / Ex8:Risk own admission); internally every
+  risk limits (Exchange8:Gateway / Exchange8:Risk own admission); internally every
   inbound queue is bounded — quote storms are absorbed by the
   change-driven dirty set (unchanged quotes skip re-evaluation entirely)
   and the instrument peg cap, not by unbounded buffers.
@@ -645,7 +645,7 @@ sequenceDiagram
     autonumber
     participant OPS as Operator (make upgrade-instance / start)
     participant SHELL as sentin8-shell boot
-    participant ME2 as Ex8:ME / Ex8:Gateway reconcile
+    participant ME2 as Exchange8:ME / Exchange8:Gateway reconcile
     participant DB as DB2 = oms.conditional_order / oms.outbox / oms.audit_journal
     participant BUS4 as Sentin8:Bus
     OPS->>SHELL: start (drained predecessor)

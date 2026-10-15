@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:OMS stat emission (Sentin8:Stat measure surface — DESIGN.md §10).
+//! Exchange8:OMS stat emission (Sentin8:Stat measure surface — DESIGN.md §10).
 //!
 //! The shell's policy boot (`sentin8::shield::runtime::boot_full`) initializes
 //! the platform stat emitter per process (the `{leaf}-policy` M2M workload

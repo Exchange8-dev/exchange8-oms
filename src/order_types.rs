@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:OMS order types & algorithms.
+//! Exchange8:OMS order types & algorithms.
 //!
 //! - **Conditional/OCO/bracket**: one-cancels-other groups — a leg
 //!   triggering (or filling) cancels its siblings; brackets are

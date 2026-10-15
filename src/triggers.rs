@@ -3,10 +3,10 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:OMS trigger engine — stop/stop-limit, trailing stops, OCO/OCA groups.
+//! Exchange8:OMS trigger engine — stop/stop-limit, trailing stops, OCO/OCA groups.
 //!
 //! Stop and conditional orders are held here (design: order-types doc §2) and
-//! released to Ex8:ME when the trigger fires; they never rest in the ME book.
+//! released to Exchange8:ME when the trigger fires; they never rest in the ME book.
 //! Pure evaluation: the shell feeds market ticks (last/bid/ask from MD/VFeeds)
 //! and index publications, and order lifecycle events; the engine returns
 //! trigger/release/cancel actions.
@@ -205,7 +205,7 @@ pub struct IndexPublication {
 /// Trigger-engine outcome for one order.
 #[derive(Debug, PartialEq, Eq)]
 pub enum TriggerAction {
-    /// Trigger fired: release the order to Ex8:ME.
+    /// Trigger fired: release the order to Exchange8:ME.
     Release {
         order_id: u64,
         is_buy: bool,

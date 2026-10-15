@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:OMS typed event envelopes (DBX producer path).
+//! Exchange8:OMS typed event envelopes (DBX producer path).
 //!
 //! Every peg/conditional/algo mutation writes an outbox row in the SAME
 //! transaction as the domain change with a **payload-complete** envelope
@@ -54,7 +54,7 @@ pub const EV_PEG_HELD: &str = "exchange8:oms:peg:held";
 /// (held; never rests in the ME book).
 pub const EV_CONDITIONAL_ARMED: &str = "exchange8:oms:conditional:armed";
 /// `exchange8:oms:conditional:released` — the trigger fired; the order
-/// released to Ex8:ME (market or stop-limit terms).
+/// released to Exchange8:ME (market or stop-limit terms).
 pub const EV_CONDITIONAL_RELEASED: &str = "exchange8:oms:conditional:released";
 /// `exchange8:oms:conditional:sibling-cancelled` — an OCO/OCA sibling
 /// cancelled (group semantics resolved in the engine).

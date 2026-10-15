@@ -1,7 +1,7 @@
-# BUSINESS.md: Ex8:OMS — Business Requirements & Functionality
+# BUSINESS.md: Exchange8:OMS — Business Requirements & Functionality
 
 > Audience: product owners, business analysts, and anyone evaluating what
-> Ex8:OMS **does for the business**. For architecture read `README.md`;
+> Exchange8:OMS **does for the business**. For architecture read `README.md`;
 > for wire-level detail read `DESIGN.md`.
 
 ## 1. Business Purpose
@@ -49,15 +49,15 @@
 
 | Concern | Owning service |
 |---|---|
-| Client connectivity, FIX/sessions, order state shown to the client | Ex8:Gateway |
-| The matching books, fills, and execution prices | Ex8:ME |
-| Pre-trade risk checks (position, credit, fat-finger limits) | Ex8:Risk |
-| Smart order routing decisions | Ex8:SOR |
-| Market-data book assembly and feed publication | Ex8:MD / Ex8:VFeeds |
-| Reference data: instruments, tick rules, calendars | Ex8:RefData |
-| Trade persistence, clearing, netting | Ex8:Clearing |
-| Settlement and margin | Ex8:Settlement / Ex8:Margin |
-| Surveillance & regulatory reporting | Ex8:Surveillance / Ex8:Regulatory |
+| Client connectivity, FIX/sessions, order state shown to the client | Exchange8:Gateway |
+| The matching books, fills, and execution prices | Exchange8:ME |
+| Pre-trade risk checks (position, credit, fat-finger limits) | Exchange8:Risk |
+| Smart order routing decisions | Exchange8:SOR |
+| Market-data book assembly and feed publication | Exchange8:MD / Exchange8:VFeeds |
+| Reference data: instruments, tick rules, calendars | Exchange8:RefData |
+| Trade persistence, clearing, netting | Exchange8:Clearing |
+| Settlement and margin | Exchange8:Settlement / Exchange8:Margin |
+| Surveillance & regulatory reporting | Exchange8:Surveillance / Exchange8:Regulatory |
 | Identity, tokens, authorization decisions engine | Sentin8:Auth / Shield (declared sets) |
 | Event durability & fan-out infrastructure | Sentin8:Bus |
 | Audit archival | Sentin8:Sys |
@@ -122,10 +122,10 @@ transaction, relayed idempotently by the shell, audit-journaled):
 | `exchange8:oms:algo:started` / `paused` / `resumed` / `completed` / `cancelled` | The algo parent's durable lifecycle transitions (running ⇄ paused; terminal on completion/cancel) |
 | `exchange8:oms:algo:child-issued` | Each child slice issued by a TWAP/VWAP/POV parent |
 
-Consumers: Ex8:Gateway (client confirmations with the client-facing order
-id restored), Ex8:Clearing (audit/clearing mirror). Inbound events
-consumed: quote updates from Ex8:MD / Ex8:VFeeds (BBO / consolidated EBBO),
-lifecycle events from Ex8:ME (booked / killed / modified / executed /
+Consumers: Exchange8:Gateway (client confirmations with the client-facing order
+id restored), Exchange8:Clearing (audit/clearing mirror). Inbound events
+consumed: quote updates from Exchange8:MD / Exchange8:VFeeds (BBO / consolidated EBBO),
+lifecycle events from Exchange8:ME (booked / killed / modified / executed /
 rejected / repriced), Shield policy-set updates.
 
 ## 5. Business Rules & Invariants
@@ -168,7 +168,7 @@ rejected / repriced), Shield policy-set updates.
 
 ## 6. Target-User Roles & Use Cases
 
-| Persona | Role | What they do with Ex8:OMS |
+| Persona | Role | What they do with Exchange8:OMS |
 |---|---|---|
 | Institutional trader | Large-order executor | Runs iceberg and pegged orders to accumulate or exit size without moving the visible market |
 | Algorithmic desk | Execution-algo user | Runs TWAP/VWAP/POV parents whose child slices the OMS schedules and monitors |
@@ -203,16 +203,16 @@ rejected / repriced), Shield policy-set updates.
 
 ## 8. Dependencies & Reliance
 
-- **Ex8:Gateway** — the only peg-management entry point; forwards
+- **Exchange8:Gateway** — the only peg-management entry point; forwards
   client orders, idempotency tokens, and receives confirmations with the
   client-facing id restored.
-- **Ex8:MD / Ex8:VFeeds** — the quote inputs (BBO/EBBO); pegs stop
+- **Exchange8:MD / Exchange8:VFeeds** — the quote inputs (BBO/EBBO); pegs stop
   repricing when quotes stall.
-- **Ex8:ME** — the matching destination for working slices and released
+- **Exchange8:ME** — the matching destination for working slices and released
   stops; its lifecycle events drive slice re-arm and kill handling.
-- **Ex8:Risk** — pre-trade authorization happens upstream; OMS only
+- **Exchange8:Risk** — pre-trade authorization happens upstream; OMS only
   re-validates tick compliance of computed prices.
-- **Ex8:Clearing** — consumes the lifecycle mirror as the durable
+- **Exchange8:Clearing** — consumes the lifecycle mirror as the durable
   reconciliation set.
 - **Sentin8:Auth** — all token issuance/verification; M2M workloads
   (`exchange8:oms`/`oms` streams, `oms-audit`, `exchange8-oms-tls`) and

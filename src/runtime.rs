@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:OMS runtime wiring — the instrument-sharded evaluation plane + admin
+//! Exchange8:OMS runtime wiring — the instrument-sharded evaluation plane + admin
 //! handlers (DESIGN.md §7 task graph).
 //!
 //! Wires the pure cores (`pegs`, `peg_machine`, `triggers`, `order_types`)

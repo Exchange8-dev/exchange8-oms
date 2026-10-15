@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:OMS HTTP handler tests (DESIGN.md §9 — the router shape).
+//! Exchange8:OMS HTTP handler tests (DESIGN.md §9 — the router shape).
 //!
 //! Drives the REAL router through `tower::ServiceExt::oneshot`: route
 //! mounting, the authorization pipeline (bearer → Shield step 5), status

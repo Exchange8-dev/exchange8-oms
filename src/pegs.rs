@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:OMS peg-order engine core.
+//! Exchange8:OMS peg-order engine core.
 //!
 //! Peg lifecycle: on-hold → executing → (re)pricing on quote updates →
 //! cancel/fill. Price formulas preserve the the platform spec §peg

@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:OMS peg-order state machine.
+//! Exchange8:OMS peg-order state machine.
 //!
 //! Implements the OMS design §4.4 state machine (see the service
 //! `DESIGN.md` §4 for the transition set):
