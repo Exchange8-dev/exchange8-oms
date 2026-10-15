@@ -82,7 +82,6 @@ pub struct ShardRuntime {
     pub pegs: HashMap<u64, crate::peg_machine::PegOrder>,
 }
 
-
 /// The process-wide shard runtimes (set once at boot; the admin handlers
 /// read through the shared map, the consumer routes via the sender map).
 static SHARD_RUNTIMES: std::sync::OnceLock<
