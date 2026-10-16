@@ -94,7 +94,6 @@ graph TD
 The binary boots via `sentin8::shell::serve`:
 
 1. `Sentin8Shell::new("exchange8:oms", "EXCHANGE8_OMS")` — registration, DB
-   pool (`EXCHANGE8_OMS_DATABASE_URL`), health endpoint, mimalloc global
    allocator, graceful drain on `make upgrade-instance`.
 2. The `with_state` closure spawns the evaluation plane (`runtime.rs::
    spawn_tasks`): 64 instrument-shard evaluator tasks (single writer each),

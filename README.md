@@ -15,7 +15,6 @@ owned by Exchange8:Gateway, books and fills by Exchange8:ME; OMS owns the peg st
 machine, slice plans, and trigger conditions. The service binary wraps the
 pure order-type cores in the Sentin8 platform shell (`sentin8::shell`):
 axum HTTP/TLS surface, `--print-registration` self-registration, DB pool,
-health endpoint, Shield (declarative policy) admin API mount, mimalloc
 allocator, and graceful drain. Durable surfaces are deliberately small —
 conditional/complex/algo order rows in schema `oms` (database `exchange8`),
 a local `oms.outbox` relayed to Sentin8:Bus, and an `oms.audit_journal`

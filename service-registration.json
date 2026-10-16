@@ -2,7 +2,11 @@
   "vertical": "exchange8",
   "services": [
     {
-      "service_type": "exchange8:oms"
+      "service_type": "exchange8:oms",
+      "telemetry_property": {
+        "slug": "oms",
+        "name": "Exchange8:OMS Telemetry"
+      }
     }
   ]
 }
