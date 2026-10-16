@@ -199,10 +199,10 @@ sequenceDiagram
         ME-->>OMS: killed → state Cancelled
         OMS-->>GW: PegKilled
     else fill on displayed slice
-        ME-->>OMS: executed → decrement slice; re-arm next slice from reserve if remaining
+        ME-->>OMS: executed → decrement slice, re-arm next slice from reserve if remaining
         OMS-->>GW: PegExecuted (fill-forward with aggregate fields)
     end
-    Note over OUT: relay failure: row stays unrelayed, relay_attempts++ ; replayable
+    Note over GW,OUT: relay failure: row stays unrelayed, relay_attempts++ , replayable
 ```
 
 ### Request lifecycle — iceberg slice issuance
@@ -245,11 +245,11 @@ sequenceDiagram
     participant ME as Exchange8:ME
     participant OUT as Egress (outbox relay)
 
-    GW->>OMS: stop / stop-limit / trailing register (held; never rests in ME book)
+    GW->>OMS: stop / stop-limit / trailing register (held, never rests in ME book)
     loop market ticks (last / bid / ask per instrument)
         MD->>OMS: MarketTick
         OMS->>OMS: per held order on instrument: ratchet trail (never loosen) → compare reference
-        alt trigger fired (buy ≥ stop at/above; sell ≤ stop at/below)
+        alt trigger fired (buy ≥ stop at/above, sell ≤ stop at/below)
             OMS->>ME: Release as market (limit_price None) or stop-limit (limit carried)
             OMS-->>GW: release confirm (triggered_at = reference)
             alt OCO/OCA group set
@@ -265,7 +265,7 @@ sequenceDiagram
         GW->>OMS: cancel(order_id)
         OMS-->>GW: sibling cancels (OCO propagation)
     end
-    Note over OUT: relay failure: row stays unrelayed, relay_attempts++ ; replayable
+    Note over MD,OUT: relay failure: row stays unrelayed, relay_attempts++ , replayable
 ```
 
 ### Request lifecycle — admin / policy surface (RFW pass)
@@ -281,13 +281,13 @@ sequenceDiagram
     BFF->>OMS: delegated call (cert-bound M2M, act= originating user)
     OMS->>SHIELD: same SharedAdminState as request path (HasPolicyAdmin)
     alt policy allows
-        OMS-->>BFF: 200 (set recorded; enforce/shadow/disable applied)
+        OMS-->>BFF: 200 (set recorded, enforce/shadow/disable applied)
     else no matching permit (forbid beats permit)
-        OMS-->>BFF: 403 (fail-closed; shadow mode logs would-deny instead)
+        OMS-->>BFF: 403 (fail-closed, shadow mode logs would-deny instead)
     end
     Note over OMS: declared RFW pages /v1/admin/ui/{pegs,conditionals,algos} +
-    POST /v1/admin/{pegs,conditionals,algo-orders} + the algo pause/resume
-    surface — mounted (main.rs::extend_router)
+    Note over UI,SHIELD: POST /v1/admin/{pegs,conditionals,algo-orders} + the algo pause/resume
+    Note over UI,SHIELD: surface — mounted (main.rs::extend_router)
 ```
 
 ## 3. Data Model
@@ -524,7 +524,7 @@ sequenceDiagram
         OMS2-->>GW2: PegBooked(limit) — peg held OnHold, not on the book
     end
     OMS2->>BUS3: oms.outbox relay → POST /v1/produce (idempotent on row id)
-    BUS3-->>OMS2: ack (row marked relayed; retry on failure)
+    BUS3-->>OMS2: ack (row marked relayed, retry on failure)
 ```
 
 ### Event flow: outbox → Bus → trigger
