@@ -617,12 +617,21 @@ pub const QUOTE_STREAM_FAMILY: &str = "exchange8";
 pub const QUOTE_CONSUMER_GROUP: &str = "exchange8-oms-quotes";
 
 /// The quote consumer: batched `POST /v1/consume` (XREADGROUP semantics)
-/// against the vertical's stream family, decoding the BBO payload and
-/// routing into the instrument shard queues (bounded `try_send`; a full
-/// queue drops the stage and the next quote re-drives evaluation — the
-/// newest-wins quote semantics). Runs ahead of the producers: a Bus outage
-/// or an empty stream idles the loop — pegs hold their last evaluation
-/// (quote-stall semantics, DESIGN.md §6).
+/// against the vertical's stream family over the Bus SSE surface,
+/// decoding the BBO payload and routing into the instrument shard
+/// queues (bounded `try_send`; a full queue drops the stage and the next
+/// quote re-drives evaluation — the newest-wins quote semantics). Runs
+/// ahead of the producers: a Bus outage or an empty stream idles the
+/// loop — pegs hold their last evaluation (quote-stall semantics,
+/// DESIGN.md §6).
+///
+/// BUSCONNP-1: the SSE direct-consumer pattern (the hotel8/trade8/
+/// email8 shape) — one long-lived `GET /v1/consume/sse` connection per
+/// epoch with per-message `POST /v1/ack`. The bus holds the blocking
+/// read server-side on its own dedicated connection; the OMS never
+/// issues short-interval `POST /v1/consume` blocking polls (a 1s-block
+/// poll loop saturates the bus's shared command client and pins the
+/// GLIDE watchdog's pending count above its overload threshold).
 async fn quote_consumer(core: &Arc<AppState>) -> anyhow::Result<()> {
     // Cert-presenting Bus client (CERTFREE-4V): the `exchange8:oms`
     // workload CERTIFICATE is the identity — no DCR, no token; the
@@ -644,43 +653,83 @@ async fn quote_consumer(core: &Arc<AppState>) -> anyhow::Result<()> {
     };
     loop {
         let resp = match bus
-            .consume(&sentin8::bus::contracts::ConsumeRequest {
-                stream_family: QUOTE_STREAM_FAMILY.into(),
-                consumer_group: QUOTE_CONSUMER_GROUP.into(),
-                max_count: 500,
-                block_ms: 1000,
-            })
+            .sse_consume(QUOTE_STREAM_FAMILY, QUOTE_CONSUMER_GROUP)
             .await
         {
             Ok(r) => r,
             Err(e) => {
-                tracing::debug!(error = %e, "oms quote consume unavailable; retrying");
+                tracing::warn!(error = %e, "oms quote SSE connect failed; retrying");
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 continue;
             }
         };
-        for msg in resp.messages {
+        tracing::info!(
+            family = QUOTE_STREAM_FAMILY,
+            group = QUOTE_CONSUMER_GROUP,
+            "oms: quote SSE consumer connected"
+        );
+        if let Err(e) = quote_sse_loop(&bus, resp.bytes_stream()).await {
+            tracing::warn!(error = %e, "oms: quote SSE loop exited");
+        }
+        tracing::info!("oms: quote SSE disconnected — reconnecting");
+    }
+}
+
+/// Process the quote SSE stream until it drops. Each message is decoded
+/// and routed (newest-wins), then acked; non-quote events in the family
+/// (peg mirrors, ME lifecycle …) are acked and skipped — the evaluator
+/// consumes quotes only. Malformed BBO payloads are acked and skipped
+/// (at-least-once + the shard's newest-wins semantics make a skip safe).
+async fn quote_sse_loop<T, E>(
+    bus: &sentin8::bus::client::BusClient,
+    resp: impl futures_util::Stream<Item = Result<T, E>> + Unpin,
+) -> anyhow::Result<()>
+where
+    T: AsRef<[u8]>,
+    E: std::fmt::Display,
+{
+    use futures_util::StreamExt;
+
+    let mut stream = resp;
+    let mut buffer = String::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        buffer.push_str(&String::from_utf8_lossy(chunk.as_ref()));
+        // SSE events are separated by blank lines; data rides `data:` lines.
+        while let Some(blank) = buffer.find("\n\n") {
+            let event = buffer[..blank].to_string();
+            buffer = buffer[blank + 2..].to_string();
+            let data_line = event
+                .lines()
+                .filter_map(|l| l.strip_prefix("data:").map(|s| s.trim_start()))
+                .collect::<Vec<_>>()
+                .join("");
+            if data_line.is_empty() {
+                continue; // heartbeat comment
+            }
+            let Ok(msg) = serde_json::from_str::<sentin8::bus::contracts::Message>(&data_line)
+            else {
+                continue;
+            };
             if msg.event_type != QUOTE_EVENT {
-                // Non-quote events in the family (peg mirrors, ME
-                // lifecycle …) are ACKed and skipped — the evaluator
-                // consumes quotes only.
                 let _ = bus
                     .ack(QUOTE_STREAM_FAMILY, QUOTE_CONSUMER_GROUP, &msg.message_id)
                     .await;
                 continue;
             }
-            let payload = match serde_json::from_value::<exchange8::contracts::events::BboUpdated>(
-                msg.payload.clone(),
-            ) {
-                Ok(p) => p,
-                Err(e) => {
-                    tracing::warn!(error = %e, "oms quote consumer: malformed BBO payload; skipped");
-                    let _ = bus
-                        .ack(QUOTE_STREAM_FAMILY, QUOTE_CONSUMER_GROUP, &msg.message_id)
-                        .await;
-                    continue;
-                }
-            };
+            let payload =
+                match serde_json::from_value::<exchange8::contracts::events::BboUpdated>(
+                    msg.payload.clone(),
+                ) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        tracing::warn!(error = %e, "oms quote consumer: malformed BBO payload; skipped");
+                        let _ = bus
+                            .ack(QUOTE_STREAM_FAMILY, QUOTE_CONSUMER_GROUP, &msg.message_id)
+                            .await;
+                        continue;
+                    }
+                };
             if let Some(senders) = SHARD_SENDERS.get() {
                 let s = shard_of(payload.instrument_id, DEFAULT_SHARDS);
                 if let Some(tx) = senders.get(&s) {
@@ -698,6 +747,7 @@ async fn quote_consumer(core: &Arc<AppState>) -> anyhow::Result<()> {
                 .await;
         }
     }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

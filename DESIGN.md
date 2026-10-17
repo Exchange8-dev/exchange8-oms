@@ -97,7 +97,7 @@ The binary boots via `sentin8::shell::serve`:
    allocator, graceful drain on `make upgrade-instance`.
 2. The `with_state` closure spawns the evaluation plane (`runtime.rs::
    spawn_tasks`): 64 instrument-shard evaluator tasks (single writer each),
-   the quote consumer (Bus `POST /v1/consume`, group
+   the quote consumer (Bus SSE `GET /v1/consume/sse`, group
    `exchange8-oms-quotes`, family `exchange8`), the algo scheduler pump
    (durable `oms.algo_order.state` binding), and the egress writer
    (batched `oms.outbox` INSERTs — 1000 events / 5 ms). The shell's own
@@ -463,7 +463,7 @@ router mounts health and the shared Shield admin API only.
 | Errors | `exchange8_trigger_already_fired` | HTTP 409 | registered error code |
 | Health | `GET /v1/health` | unauthenticated (shell) | liveness for Sentin8:Captain |
 | Out | Bus `POST /v1/produce` | M2M `sentin8:bus:produce` | workloads `exchange8:oms`/`oms`, plus `sentin8:stat:measure` |
-| Out (consume) | Bus `POST /v1/consume` + `POST /v1/ack` | M2M `sentin8:bus:consume` | quote consumer (family `exchange8`, group `exchange8-oms-quotes`) |
+| Out (consume) | Bus `GET /v1/consume/sse` + `POST /v1/ack` | M2M `sentin8:bus:consume` | quote consumer (family `exchange8`, group `exchange8-oms-quotes`) — the SSE direct-consumer pattern (BUSCONNP-1): one long-lived stream connection, server-driven delivery, no per-second polling. |
 | Out (stat) | Stat `POST /v1/m/metric` (via `collect_fire_and_forget`) | M2M `sentin8:stat:measure` | `oms.supervision` gauges — pegs working / conditionals held / algo parents running / child slices issued (the `{leaf}-policy` workload pair the policy boot initialized) |
 | Out | Sys `POST /v1/audit` | M2M `sentin8:sys:audit:write` | workload `oms-audit` |
 | TLS | `GET /v1/resolve/hostname` (Sys owner API) | M2M `sentin8:sys:instances:read` | workload `exchange8-oms-tls` (database-free resolve) |
@@ -502,7 +502,14 @@ updates, Gateway peg management requests.
 their event-emission story). The OMS quote consumer is bound to the
 declared family + payload shape today and idles (fail-open) until the
 producers publish — consumers may run ahead of producers; pegs hold their
-last evaluation (quote-stall semantics, §6) in the interim.
+their last evaluation (quote-stall semantics, §6) in the interim. The
+consumer rides the Bus SSE surface (`GET /v1/consume/sse`): the bus
+holds the blocking read server-side on its own dedicated connection —
+the OMS never issues short-interval `POST /v1/consume` blocking polls
+(the BUSCONNP-1 defect class: a 1s-block poll loop that re-fires the
+instant an empty batch returns saturates the bus's shared command
+connection and pins the GLIDE watchdog's pending count above its
+overload threshold permanently).
 
 ### Multi-party: gateway → oms → me → bus
 
@@ -695,8 +702,8 @@ graph LR
 
 - **Task layout (implemented — `runtime.rs::spawn_tasks`).** One tokio
   task per instrument shard (64, the ME shard hash), the quote-consumer
-  task (Bus `POST /v1/consume`, XREADGROUP batch + ack + group
-  `exchange8-oms-quotes`), the algo pump (1 s tick, per-env owner sweep),
+  task (Bus SSE stream, one connection per epoch + per-message ack +
+  group `exchange8-oms-quotes`), the algo pump (1 s tick, per-env owner sweep),
   the egress writer (1000 events / 5 ms batches), and the stat sampler
   (10 s gauges) — every channel between them is bounded; backpressure is
   the only queueing control, never an unbounded buffer.

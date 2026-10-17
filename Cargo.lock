@@ -1514,6 +1514,7 @@ dependencies = [
  "anyhow",
  "axum",
  "exchange8",
+ "futures-util",
  "sentin8",
  "serde",
  "serde_json",

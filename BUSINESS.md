@@ -38,7 +38,7 @@
 | Complex (multi-leg) orders | Atomic all-or-none evaluation across legs — the strategy trades in full or not at all |
 | Execution algorithms | TWAP (uniform slices), VWAP (volume-profile-weighted slices), POV (percentage of realized volume) |
 | Auction participation | MOC / MOO / LOC / LOO orders queued for the auction uncross (never book-resting), with imbalance contribution |
-| Quote-driven re-evaluation | Per-instrument BBO/EBBO quote cache drives exactly the pegs on the changed instrument |
+| Quote-driven re-evaluation | Per-instrument BBO/EBBO quote cache drives exactly the pegs on the changed instrument; quote events arrive over a live Bus stream subscription (no polling delay — evaluation starts the moment a quote is published) |
 | Child-order identity & idempotency | Scene-leased child order ids and client-key dedup — duplicate submissions return the original ack |
 | Lifecycle mirroring | Peg confirmations to the gateway and durable event mirrors for clearing/audit consumers (outbox family `exchange8` — one row per mutation, audit-journaled) |
 | Algo parent control | Operators pause/resume a running parent from the admin console; the durable `oms.algo_order.state` carries the plan across restarts |

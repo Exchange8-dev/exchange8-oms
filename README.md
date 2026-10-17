@@ -55,7 +55,9 @@ surface; the heavy lifting is in four pure sibling modules
 inputs are quotes and order events and whose outputs are ME actions
 (submit / replace / withdraw / release / cancel). The runtime wiring
 (`runtime.rs`) spawns the instrument-sharded evaluation plane (quote
-consumer + per-shard evaluators + the algo scheduler pump + the egress
+consumer (SSE direct-consumer pattern — one long-lived Bus stream
+connection per epoch, per-message acks) + per-shard evaluators + the
+algo scheduler pump + the egress
 writer), and `events.rs`/`stats.rs` carry the typed emission vocabulary
 and the supervision gauges. Working pegs and trigger holds live in
 memory; the durable surfaces are the conditional/complex/algo order
