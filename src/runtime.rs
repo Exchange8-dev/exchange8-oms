@@ -1087,6 +1087,17 @@ pub(crate) fn correlation_from(headers: &axum::http::HeaderMap) -> String {
         .unwrap_or_else(|| Uuid::new_v4().to_string())
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/admin/ui/{page}",
+    responses(
+        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 404, description = "Unknown page"),
+        (status = 403, description = "Forbidden"),
+    ),
+    security(),
+    tag = "exchange8-admin",
+)]
 /// `GET /v1/admin/ui/{page}` — the declared RFW page definition (Dash
 /// renders it; gated by the page's Shield action; 404 for undeclared
 /// slugs) — the refdata `handlers::admin_ui_page` pattern.
@@ -1126,6 +1137,17 @@ pub struct PegRow {
     /// Whether the peg converted to a plain limit order.
     pub converted: bool,
 }
+#[utoipa::path(
+    post,
+    path = "/v1/admin/pegs",
+    responses(
+        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 401, description = "Not authenticated"),
+        (status = 403, description = "Forbidden"),
+    ),
+    security(),
+    tag = "exchange8-admin",
+)]
 
 /// `POST /v1/admin/pegs` — the live peg table (RFW page data; read-only).
 /// Gate: the `pegs` page's read scope.
@@ -1176,6 +1198,17 @@ pub struct ConditionalRow {
     /// OCO/OCA group (null when ungrouped).
     pub oco_group: Option<u64>,
 }
+#[utoipa::path(
+    post,
+    path = "/v1/admin/conditionals",
+    responses(
+        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 401, description = "Not authenticated"),
+        (status = 403, description = "Forbidden"),
+    ),
+    security(),
+    tag = "exchange8-admin",
+)]
 
 /// `POST /v1/admin/conditionals` — the held conditional table (RFW page
 /// data; read-only). Gate: the `conditionals` page's read scope.
@@ -1225,6 +1258,17 @@ pub struct AlgoOrderRow {
     /// Slice size (raw qty text).
     pub slice_size: Option<String>,
 }
+#[utoipa::path(
+    post,
+    path = "/v1/admin/algo-orders",
+    responses(
+        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 401, description = "Not authenticated"),
+        (status = 403, description = "Forbidden"),
+    ),
+    security(),
+    tag = "exchange8-admin",
+)]
 
 /// `POST /v1/admin/algo-orders` — the durable algo parents (RFW page data;
 /// RLS-scoped read of `oms.algo_order` with explicit `env_id`). Gate: the
@@ -1259,6 +1303,17 @@ pub async fn admin_algo_orders(
     ctx.commit().await.map_err(sentin8::shell::err_db)?;
     Ok(Json(rows))
 }
+#[utoipa::path(
+    post,
+    path = "/v1/admin/algo-orders/{id}/pause",
+    responses(
+        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 401, description = "Not authenticated"),
+        (status = 403, description = "Forbidden"),
+    ),
+    security(),
+    tag = "exchange8-admin",
+)]
 
 /// `POST /v1/admin/algo-orders/{id}/pause` — pause the running parent
 /// (`running → paused`; the durable binding + transition event + audit).
@@ -1272,6 +1327,17 @@ pub async fn pause_algo_order(
 
 /// `POST /v1/admin/algo-orders/{id}/resume` — resume the paused parent
 /// (`paused → running`).
+#[utoipa::path(
+    post,
+    path = "/v1/admin/algo-orders/{id}/resume",
+    responses(
+        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 401, description = "Not authenticated"),
+        (status = 403, description = "Forbidden"),
+    ),
+    security(),
+    tag = "exchange8-admin",
+)]
 pub async fn resume_algo_order(
     State(state): State<Arc<AppState>>,
     headers: axum::http::HeaderMap,

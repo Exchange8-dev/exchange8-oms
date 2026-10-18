@@ -22,6 +22,7 @@ mod order_types;
 mod peg_machine;
 mod pegs;
 mod registration;
+mod openapi;
 mod runtime;
 mod stats;
 mod triggers;
