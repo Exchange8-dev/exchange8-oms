@@ -1003,7 +1003,7 @@ pub async fn algo_state_transition(
     from: &str,
     to: &str,
     op: AlgoOp,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+) -> Result<Json<AlgoStateAck>, (StatusCode, String)> {
     let mut conn = state.pool.acquire().await.map_err(sentin8::shell::err_db)?;
     let mut tx = conn.begin().await.map_err(sentin8::shell::err_db)?;
     sentin8::shell::set_tenant_context(&mut tx, a.env_id()).await;
@@ -1066,9 +1066,10 @@ pub async fn algo_state_transition(
     .await
     .map_err(sentin8::shell::err_db)?;
     tx.commit().await.map_err(sentin8::shell::err_db)?;
-    Ok(Json(
-        serde_json::json!({ "id": algo_id.to_string(), "state": to }),
-    ))
+    Ok(Json(AlgoStateAck {
+        id: algo_id.to_string(),
+        state: to.to_string(),
+    }))
 }
 
 // ---------------------------------------------------------------------------
@@ -1087,11 +1088,28 @@ pub(crate) fn correlation_from(headers: &axum::http::HeaderMap) -> String {
         .unwrap_or_else(|| Uuid::new_v4().to_string())
 }
 
+/// The RFW page-definition document (transparent renderer-contract JSON).
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+#[serde(transparent)]
+pub struct AdminRfwPage(
+    /// The RFW page-definition document.
+    pub serde_json::Value,
+);
+
+/// Algo pause/resume ack.
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct AlgoStateAck {
+    /// The algo order id.
+    pub id: String,
+    /// The new algo state.
+    pub state: String,
+}
+
 #[utoipa::path(
     get,
     path = "/v1/admin/ui/{page}",
     responses(
-        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 200, description = "RFW page definition", body = AdminRfwPage),
         (status = 404, description = "Unknown page"),
         (status = 403, description = "Forbidden"),
     ),
@@ -1105,7 +1123,7 @@ pub async fn admin_ui_page(
     State(state): State<Arc<AppState>>,
     headers: axum::http::HeaderMap,
     axum::extract::Path(page): axum::extract::Path<String>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+) -> Result<Json<AdminRfwPage>, (StatusCode, String)> {
     let a = sentin8::shell::verify_token(&state.config, &headers).await?;
     let definition = admin_pages::oms_pages()
         .into_iter()
@@ -1119,12 +1137,12 @@ pub async fn admin_ui_page(
     )
     .await
     .map(|_| ())?;
-    Ok(Json(definition.to_rfw()))
+    Ok(Json(AdminRfwPage(definition.to_rfw())))
 }
 
 /// One live peg row (the `pegs` page table data; memory-resident
 /// supervision state projected for the RFW table).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct PegRow {
     /// Peg id.
     pub peg_id: u64,
@@ -1141,7 +1159,7 @@ pub struct PegRow {
     post,
     path = "/v1/admin/pegs",
     responses(
-        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 200, description = "Peg orders", body = Vec<PegRow>),
         (status = 401, description = "Not authenticated"),
         (status = 403, description = "Forbidden"),
     ),
@@ -1185,7 +1203,7 @@ pub async fn admin_pegs(
 }
 
 /// One held conditional row (the `conditionals` page table data).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct ConditionalRow {
     /// Order id.
     pub order_id: u64,
@@ -1194,6 +1212,7 @@ pub struct ConditionalRow {
     /// Trigger reference (last/bid/ask/index).
     pub trigger_ref: String,
     /// Trigger threshold (raw ticks).
+    #[schema(value_type = String)]
     pub trigger_price: i128,
     /// OCO/OCA group (null when ungrouped).
     pub oco_group: Option<u64>,
@@ -1202,7 +1221,7 @@ pub struct ConditionalRow {
     post,
     path = "/v1/admin/conditionals",
     responses(
-        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 200, description = "Conditional orders", body = Vec<ConditionalRow>),
         (status = 401, description = "Not authenticated"),
         (status = 403, description = "Forbidden"),
     ),
@@ -1245,7 +1264,7 @@ pub async fn admin_conditionals(
 }
 
 /// One durable algo parent row (the `algos` page table data).
-#[derive(Debug, Serialize, sqlx::FromRow)]
+#[derive(Debug, Serialize, sqlx::FromRow, utoipa::ToSchema)]
 pub struct AlgoOrderRow {
     /// Row id.
     pub id: Uuid,
@@ -1262,7 +1281,7 @@ pub struct AlgoOrderRow {
     post,
     path = "/v1/admin/algo-orders",
     responses(
-        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 200, description = "Algo orders", body = Vec<AlgoOrderRow>),
         (status = 401, description = "Not authenticated"),
         (status = 403, description = "Forbidden"),
     ),
@@ -1307,7 +1326,7 @@ pub async fn admin_algo_orders(
     post,
     path = "/v1/admin/algo-orders/{id}/pause",
     responses(
-        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 200, description = "Algo paused", body = AlgoStateAck),
         (status = 401, description = "Not authenticated"),
         (status = 403, description = "Forbidden"),
     ),
@@ -1321,7 +1340,7 @@ pub async fn pause_algo_order(
     State(state): State<Arc<AppState>>,
     headers: axum::http::HeaderMap,
     axum::extract::Path(algo_id): axum::extract::Path<Uuid>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+) -> Result<Json<AlgoStateAck>, (StatusCode, String)> {
     pause_resume(state, headers, algo_id, ALGO_STATE_PAUSED, AlgoOp::Paused).await
 }
 
@@ -1331,7 +1350,7 @@ pub async fn pause_algo_order(
     post,
     path = "/v1/admin/algo-orders/{id}/resume",
     responses(
-        (status = 200, description = "OK", body = serde_json::Value),
+        (status = 200, description = "Algo resumed", body = AlgoStateAck),
         (status = 401, description = "Not authenticated"),
         (status = 403, description = "Forbidden"),
     ),
@@ -1342,7 +1361,7 @@ pub async fn resume_algo_order(
     State(state): State<Arc<AppState>>,
     headers: axum::http::HeaderMap,
     axum::extract::Path(algo_id): axum::extract::Path<Uuid>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+) -> Result<Json<AlgoStateAck>, (StatusCode, String)> {
     pause_resume(state, headers, algo_id, ALGO_STATE_RUNNING, AlgoOp::Resumed).await
 }
 
@@ -1354,7 +1373,7 @@ async fn pause_resume(
     algo_id: Uuid,
     to: &str,
     op: AlgoOp,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+) -> Result<Json<AlgoStateAck>, (StatusCode, String)> {
     let a = sentin8::shell::verify_token(&state.config, &headers).await?;
     sentin8::shell::policy::require(
         &state.admin.policy,
