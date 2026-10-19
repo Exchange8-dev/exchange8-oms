@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Exchange8:OMS trigger engine — stop/stop-limit, trailing stops, OCO/OCA groups.
+//! Exchange8:OMS trigger engine - stop/stop-limit, trailing stops, OCO/OCA groups.
 //!
 //! Stop and conditional orders are held here (design: order-types doc §2) and
 //! released to Exchange8:ME when the trigger fires; they never rest in the ME book.
@@ -11,21 +11,21 @@
 //! and index publications, and order lifecycle events; the engine returns
 //! trigger/release/cancel actions.
 //!
-//! Reference surfaces (DESIGN.md §4 — `oms.conditional_order.condition_type`):
-//! - `stop_last` / `stop_bid` / `stop_ask` — instrument quote references.
-//! - `stop_index` — the trigger watches an **index publication** (the
+//! Reference surfaces (DESIGN.md §4 - `oms.conditional_order.condition_type`):
+//! - `stop_last` / `stop_bid` / `stop_ask` - instrument quote references.
+//! - `stop_index` - the trigger watches an **index publication** (the
 //!   `sentin8-exchange8-index-engine-technical-design.md` publication the
 //!   index engine emits), not the instrument's own quote; fed via
 //!   [`TriggerEngine::on_index`].
-//! - `trailing_stop` — the trailed quote reference (ratchet, never loosen).
-//! - `oco` — one-cancels-other: the first leg to fire releases, siblings
+//! - `trailing_stop` - the trailed quote reference (ratchet, never loosen).
+//! - `oco` - one-cancels-other: the first leg to fire releases, siblings
 //!   cancel (the standard bracket semantics).
-//! - `oca` — one-cancels-all: a group of INDEPENDENT orders that share a
-//!   lifecycle — the first leg to fire releases it AND cancels all group
+//! - `oca` - one-cancels-all: a group of INDEPENDENT orders that share a
+//!   lifecycle - the first leg to fire releases it AND cancels all group
 //!   siblings (like OCO), but any member's client CANCEL also withdraws the
 //!   whole group even when it never fired (the "cancel-all" semantics an OCO
 //!   bracket already has; OCA's distinction is that the members are
-//!   unrelated orders entered independently, not a constructed bracket —
+//!   unrelated orders entered independently, not a constructed bracket -
 //!   group identity is the durable `oms.conditional_order.oco_group` key).
 //!
 //! Design: `design/sentin8-exchange8-order-types-technical-design.md` §2.
@@ -39,7 +39,7 @@ pub enum TriggerRef {
     Bid,
     /// Best ask (for buy stops / sell-trigger reference).
     Ask,
-    /// An index publication (the index engine's published level) — the
+    /// An index publication (the index engine's published level) - the
     /// `stop_index` condition type; the trigger compares the published
     /// index value against `trigger_price`.
     Index,
@@ -127,7 +127,7 @@ impl ConditionalOrder {
             TriggerRef::Bid => tick.bid,
             TriggerRef::Ask => tick.ask,
             // A quote-referenced trigger never evaluates on an index
-            // publication (and vice versa — the quote path skips
+            // publication (and vice versa - the quote path skips
             // index-linked orders under `on_tick`).
             TriggerRef::Index => None,
         }?;
@@ -189,7 +189,7 @@ pub struct MarketTick {
     pub ask: Option<i128>,
 }
 
-/// An index publication (the index engine's published level — market-data
+/// An index publication (the index engine's published level - market-data
 /// design §index; the value feeds `stop_index` triggers). Raw micros-level
 /// fixed-point value (scaled ×10⁴ to the equity price scale).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -266,7 +266,7 @@ impl TriggerEngine {
         let mut fired_orders: Vec<u64> = Vec::new();
         let mut i = 0;
         while i < self.orders.len() {
-            // Index-linked orders never evaluate against instrument quotes —
+            // Index-linked orders never evaluate against instrument quotes -
             // their reference arrives via `on_index`.
             if self.orders[i].trigger_ref == TriggerRef::Index {
                 i += 1;
@@ -293,7 +293,7 @@ impl TriggerEngine {
     }
 
     /// Feed an index publication: evaluates every index-linked held order
-    /// (the `stop_index` condition type — the trigger watches the index
+    /// (the `stop_index` condition type - the trigger watches the index
     /// engine's published level instead of the instrument's own quote).
     /// `index_id` scopes which index the publication belongs to: held
     /// orders carry it in `instrument_id` (the index's own id space).
@@ -689,7 +689,7 @@ mod tests {
         assert_eq!(e.held()[0].order_id, 18);
     }
 
-    // ── stop_index (index-linked triggers — design order-types §2) ──────
+    // ── stop_index (index-linked triggers - design order-types §2) ──────
 
     fn index_pub(index_id: u32, value: i128) -> IndexPublication {
         IndexPublication {
@@ -811,13 +811,13 @@ mod tests {
         assert_eq!(*triggered_at, 20_500);
     }
 
-    // ── OCA (one-cancels-all — design order-types §2) ───────────────────
+    // ── OCA (one-cancels-all - design order-types §2) ───────────────────
 
     #[test]
     fn oca_first_fire_releases_and_cancels_all_group_members() {
         let mut e = TriggerEngine::new();
         // Three unrelated orders sharing one OCA group (entered
-        // independently — the OCA distinction: no constructed bracket).
+        // independently - the OCA distinction: no constructed bracket).
         e.hold(ConditionalOrder::stop(31, 7, true, TriggerRef::Last, 10_100, None).in_group(50));
         e.hold(ConditionalOrder::stop(32, 7, false, TriggerRef::Last, 9_500, None).in_group(50));
         e.hold(ConditionalOrder::stop(33, 7, false, TriggerRef::Bid, 9_400, None).in_group(50));
@@ -866,7 +866,7 @@ mod tests {
         e.hold(ConditionalOrder::stop(51, 7, true, TriggerRef::Last, 10_100, None).in_group(70));
         e.hold(ConditionalOrder::stop(52, 7, true, TriggerRef::Last, 10_050, None).in_group(70));
         // One tick takes both above their stops: BOTH fire (independent
-        // evaluations — OCA cancels only survivors, never a fired leg).
+        // evaluations - OCA cancels only survivors, never a fired leg).
         let actions = e.on_tick(&tick(7, 10_200, 10_150, 10_250));
         let releases: Vec<u64> = actions
             .iter()

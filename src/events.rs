@@ -7,13 +7,13 @@
 //!
 //! Every peg/conditional/algo mutation writes an outbox row in the SAME
 //! transaction as the domain change with a **payload-complete** envelope
-//! (event-first rule — consumers react from the payload alone):
+//! (event-first rule - consumers react from the payload alone):
 //! `event_type`, `env_id`, subject, correlation/idempotency ids, and the
 //! full domain snapshot. The shell's outbox relay (its boot step 8b)
 //! pushes the rows to Sentin8:Bus `POST /v1/produce` and marks them
 //! relayed; the audit pusher (8c) drains the journal rows.
 //!
-//! Stream family: `exchange8` — the Bus stream key is
+//! Stream family: `exchange8` - the Bus stream key is
 //! `bus:{env_id}:exchange8`; the family slug is validated by
 //! `sentin8::bus::outbox::validate_stream_family` (colons are structurally
 //! impossible in a family; event NAMES carry them), matching the sibling
@@ -26,57 +26,57 @@
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-/// Stream family for all OMS-emitted events (bare vertical slug — the Bus
+/// Stream family for all OMS-emitted events (bare vertical slug - the Bus
 /// `XADD bus:{env}:exchange8` key; colons are structurally impossible per
 /// `sentin8::bus::outbox::validate_stream_family`).
 pub const STREAM_FAMILY: &str = "exchange8";
 
-// ── Event vocabulary (DESIGN.md §4 table — colon segments only) ─────────
+// ── Event vocabulary (DESIGN.md §4 table - colon segments only) ─────────
 
-/// `exchange8:oms:peg:received` — a peg order was accepted (client ack).
+/// `exchange8:oms:peg:received` - a peg order was accepted (client ack).
 pub const EV_PEG_RECEIVED: &str = "exchange8:oms:peg:received";
-/// `exchange8:oms:peg:booked` — the peg confirmed at its limit (OnHold)
+/// `exchange8:oms:peg:booked` - the peg confirmed at its limit (OnHold)
 /// or its first slice started working (Executing).
 pub const EV_PEG_BOOKED: &str = "exchange8:oms:peg:booked";
-/// `exchange8:oms:peg:repriced` — the working slice repriced (or the peg
+/// `exchange8:oms:peg:repriced` - the working slice repriced (or the peg
 /// converted to a plain limit order; `converted` flag distinguishes).
 pub const EV_PEG_REPRICED: &str = "exchange8:oms:peg:repriced";
-/// `exchange8:oms:peg:killed` — the peg left supervision (ME kill /
+/// `exchange8:oms:peg:killed` - the peg left supervision (ME kill /
 /// client cancel / withdraw with no re-hold).
 pub const EV_PEG_KILLED: &str = "exchange8:oms:peg:killed";
-/// `exchange8:oms:peg:executed` — a fill landed on the working slice
+/// `exchange8:oms:peg:executed` - a fill landed on the working slice
 /// (fill-forward with the aggregate fields).
 pub const EV_PEG_EXECUTED: &str = "exchange8:oms:peg:executed";
-/// `exchange8:oms:peg:held` — the peg pulled its slice (quote went
+/// `exchange8:oms:peg:held` - the peg pulled its slice (quote went
 /// one-sided / crossed): Executing → Pending/OnHold.
 pub const EV_PEG_HELD: &str = "exchange8:oms:peg:held";
-/// `exchange8:oms:conditional:armed` — a conditional/stop order registered
+/// `exchange8:oms:conditional:armed` - a conditional/stop order registered
 /// (held; never rests in the ME book).
 pub const EV_CONDITIONAL_ARMED: &str = "exchange8:oms:conditional:armed";
-/// `exchange8:oms:conditional:released` — the trigger fired; the order
+/// `exchange8:oms:conditional:released` - the trigger fired; the order
 /// released to Exchange8:ME (market or stop-limit terms).
 pub const EV_CONDITIONAL_RELEASED: &str = "exchange8:oms:conditional:released";
-/// `exchange8:oms:conditional:sibling-cancelled` — an OCO/OCA sibling
+/// `exchange8:oms:conditional:sibling-cancelled` - an OCO/OCA sibling
 /// cancelled (group semantics resolved in the engine).
 pub const EV_CONDITIONAL_SIBLING_CANCELLED: &str = "exchange8:oms:conditional:sibling-cancelled";
-/// `exchange8:oms:algo:started` — an algo parent began running
+/// `exchange8:oms:algo:started` - an algo parent began running
 /// (`oms.algo_order.state = running`).
 pub const EV_ALGO_STARTED: &str = "exchange8:oms:algo:started";
-/// `exchange8:oms:algo:paused` — the parent paused (slice plan halted).
+/// `exchange8:oms:algo:paused` - the parent paused (slice plan halted).
 pub const EV_ALGO_PAUSED: &str = "exchange8:oms:algo:paused";
-/// `exchange8:oms:algo:resumed` — the parent resumed.
+/// `exchange8:oms:algo:resumed` - the parent resumed.
 pub const EV_ALGO_RESUMED: &str = "exchange8:oms:algo:resumed";
-/// `exchange8:oms:algo:child-issued` — one child slice emitted to ME
+/// `exchange8:oms:algo:child-issued` - one child slice emitted to ME
 /// (TWAP/VWAP interval or POV participation step).
 pub const EV_ALGO_CHILD_ISSUED: &str = "exchange8:oms:algo:child-issued";
-/// `exchange8:oms:algo:completed` — the parent consumed its full quantity.
+/// `exchange8:oms:algo:completed` - the parent consumed its full quantity.
 pub const EV_ALGO_COMPLETED: &str = "exchange8:oms:algo:completed";
-/// `exchange8:oms:algo:cancelled` — the parent was withdrawn before
+/// `exchange8:oms:algo:cancelled` - the parent was withdrawn before
 /// completion.
 pub const EV_ALGO_CANCELLED: &str = "exchange8:oms:algo:cancelled";
 
 /// The identity carried inside every envelope (handler-owned, never derived
-/// from DB or headers — event-first: consumers re-key their caches without
+/// from DB or headers - event-first: consumers re-key their caches without
 /// callbacks).
 pub struct EventIdentity {
     /// Tenant environment of the event.
@@ -84,7 +84,7 @@ pub struct EventIdentity {
     /// Acting subject (JWT `sub`; the supervisor's M2M client id for the
     /// quote-driven path).
     pub subject_id: String,
-    /// Correlation id (from `X-Sentin8-Correlation-Id` when present —
+    /// Correlation id (from `X-Sentin8-Correlation-Id` when present -
     /// otherwise generated).
     pub correlation_id: String,
     /// Idempotency key: consumers dedupe on this.
@@ -92,14 +92,14 @@ pub struct EventIdentity {
 }
 
 /// Write the outbox row for an envelope in the CALLER's transaction
-/// (same tx as the domain change — outbox-first). The relay (shell boot
+/// (same tx as the domain change - outbox-first). The relay (shell boot
 /// step 8b) pushes it to Bus post-commit; failure of the write aborts the
 /// caller's tx via `?` at the call site. `publisher_subject` carries the
 /// request's verified `sub` so consumers can attribute the event.
 ///
 /// # Errors
 /// Propagates the SQL error (the validator's rejection of the constant
-/// family text is structurally impossible — covered by the registry test).
+/// family text is structurally impossible - covered by the registry test).
 pub async fn emit_outbox(
     tx: &mut sqlx::PgConnection,
     identity: &EventIdentity,
@@ -142,7 +142,7 @@ pub enum PegOp {
 
 /// Envelope for a peg lifecycle mutation: `snapshot` carries the peg
 /// identity + lifecycle fields (env, peg id, instrument, state, working
-/// price, limit, conversion flag, trigger cause) — Gateway (client
+/// price, limit, conversion flag, trigger cause) - Gateway (client
 /// confirmations) and Clearing (audit/clearing mirror) react from the
 /// payload alone.
 pub fn peg_event(op: PegOp, snapshot: Value, identity: &EventIdentity) -> Value {
@@ -251,10 +251,10 @@ pub enum AuditOp {
 
 /// Build the audit envelope for one mutation and write the
 /// `oms.audit_journal` row on the CALLER's transaction (same tx as the
-/// domain change; the shell's pusher — boot step 8c — drains it to
+/// domain change; the shell's pusher - boot step 8c - drains it to
 /// Sentin8:Sys `POST /v1/audit` with the `oms-audit` M2M workload).
 /// Quote-driven re-evaluations are NOT journalized (pricing state, not a
-/// durable mutation) — armed/released/paused/resumed/cancelled are.
+/// durable mutation) - armed/released/paused/resumed/cancelled are.
 pub async fn journal_mutation(
     tx: &mut sqlx::PgConnection,
     identity: &EventIdentity,
@@ -294,7 +294,7 @@ pub async fn journal_mutation(
 
 /// Registry test coverage (DESIGN.md §9): every declared event name uses
 /// the platform event format (`vertical:service:resource:operation`, all
-/// colons — no dots) and the stream family validates.
+/// colons - no dots) and the stream family validates.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -319,7 +319,7 @@ mod tests {
             EV_ALGO_CANCELLED,
         ];
         for n in NAMES {
-            // Format contract: `vertical:service:resource:operation` —
+            // Format contract: `vertical:service:resource:operation` -
             // all-colon segments, no dots. Hyphenated segments (the
             // child-issued / sibling-cancelled vocabulary) are the
             // platform's scope convention.

@@ -3,10 +3,10 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Exchange8:OMS SQL integration tests — RLS matrix replica (design §13b.1).
+//! Exchange8:OMS SQL integration tests - RLS matrix replica (design §13b.1).
 //!
 //! Runs against the live platform PostgreSQL (18) as the `exchange8_probe`
-//! NOBYPASSRLS role (`sql/probe.sql`) — RLS is meaningful only when the
+//! NOBYPASSRLS role (`sql/probe.sql`) - RLS is meaningful only when the
 //! caller cannot bypass it. The matrix:
 //!   1. every table in THIS service's own `sql/init.sql` has FORCE RLS +
 //!      a select policy (self-maintaining: derived from the DDL the
@@ -16,7 +16,7 @@
 //!   4. own-env context → probe row visible exactly once
 //!   5. cross-env context → 0 rows
 //!
-//! All fixture writes ride ONE rolled-back transaction — zero residue on
+//! All fixture writes ride ONE rolled-back transaction - zero residue on
 //! the live schema. Skips silently when the DB is unreachable so
 //! `cargo test` stays hermetic offline.
 //!
@@ -28,7 +28,7 @@ use uuid::Uuid;
 
 const PROBE_URL: &str = "postgresql://exchange8_probe@localhost:5432/exchange8";
 
-/// This service's own schema DDL — the policy-coverage source of truth.
+/// This service's own schema DDL - the policy-coverage source of truth.
 const INIT_SQL: &str = include_str!("../sql/init.sql");
 
 /// INSERT fixture ($1 = env_id).
@@ -44,7 +44,7 @@ fn env_b() -> Uuid {
     Uuid::parse_str("22222222-2222-2222-2222-222222222222").unwrap()
 }
 
-/// ONE connection per test — tenant context is connection-local
+/// ONE connection per test - tenant context is connection-local
 /// (`set_config(..., true)`); context-set and data queries ride the same
 /// connection (architecture-principles.md §4.3d). `None` → skip (offline).
 async fn probe_conn() -> Option<sqlx::pool::PoolConnection<sqlx::Postgres>> {
@@ -69,7 +69,7 @@ fn declared_tables() -> Vec<String> {
         .collect()
 }
 
-/// 1 — policy coverage: every declared table is RLS-enforced.
+/// 1 - policy coverage: every declared table is RLS-enforced.
 #[tokio::test]
 async fn every_owned_table_has_force_rls_and_select_policy() {
     let Some(mut conn) = probe_conn().await else {
@@ -91,7 +91,7 @@ async fn every_owned_table_has_force_rls_and_select_policy() {
         .await
         .ok();
         let (enabled, forced) = row.unwrap_or_else(|| {
-            panic!("table {t} (from this service's init.sql) does not exist live — vertical init not applied?");
+            panic!("table {t} (from this service's init.sql) does not exist live - vertical init not applied?");
         });
         assert!(enabled, "{t}: RLS not enabled");
         assert!(forced, "{t}: RLS not FORCEd (owner could bypass)");
@@ -107,7 +107,7 @@ async fn every_owned_table_has_force_rls_and_select_policy() {
     }
 }
 
-/// 2/3/4/5 — the behavioral matrix on the representative table.
+/// 2/3/4/5 - the behavioral matrix on the representative table.
 #[tokio::test]
 async fn rls_matrix_on_representative_table() {
     let Some(mut conn) = probe_conn().await else {
@@ -116,14 +116,14 @@ async fn rls_matrix_on_representative_table() {
     };
     let mut tx = conn.begin().await.unwrap();
 
-    // 2 — no context → 0 rows (silent enforcement, not an error).
+    // 2 - no context → 0 rows (silent enforcement, not an error).
     let n: i64 = sqlx::query_scalar(COUNT_SQL)
         .fetch_one(&mut *tx)
         .await
         .unwrap();
     assert_eq!(n, 0, "no tenant context must see zero rows");
 
-    // 3 — insert without context → rejected by the WITH CHECK policy.
+    // 3 - insert without context → rejected by the WITH CHECK policy.
     // SAVEPOINT: an RLS rejection aborts the surrounding transaction
     // (25P02); roll back to the savepoint so steps 4-5 stay runnable.
     sqlx::query("SAVEPOINT no_ctx")
@@ -143,7 +143,7 @@ async fn rls_matrix_on_representative_table() {
         .await
         .unwrap();
 
-    // 4 — own-env context → probe row visible.
+    // 4 - own-env context → probe row visible.
     set_ctx(&mut tx, env_a()).await;
     sqlx::query(INSERT_SQL)
         .bind(env_a())
@@ -156,7 +156,7 @@ async fn rls_matrix_on_representative_table() {
         .unwrap();
     assert_eq!(n, 1, "own env must see exactly its probe row");
 
-    // 5 — cross-env context → 0 rows (env_a row invisible from env_b).
+    // 5 - cross-env context → 0 rows (env_a row invisible from env_b).
     set_ctx(&mut tx, env_b()).await;
     let n: i64 = sqlx::query_scalar(COUNT_SQL)
         .fetch_one(&mut *tx)

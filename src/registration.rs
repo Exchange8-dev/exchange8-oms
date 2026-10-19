@@ -15,11 +15,11 @@ use sentin8::registration::{
     RelationDecl, SqlMigration,
 };
 
-/// The Shield text of the declared scope-mirror set — public so the
+/// The Shield text of the declared scope-mirror set - public so the
 /// policy wiring tests (`tests/policy.rs`) assert against the REAL seed.
 ///
 /// Coverage contract (policy wiring tests): every action the handlers
-/// evaluate has a permit — the order-routing route action, the algo
+/// evaluate has a permit - the order-routing route action, the algo
 /// pause/resume write action, and the platform-admin trio rides every
 /// surface.
 pub const SCOPE_MIRROR_POLICIES: &str = "permit(principal, action == Action::\"exchange8:order:route\", resource) when { principal.scopes.contains(\"exchange8:order:route\") };
@@ -33,13 +33,13 @@ permit(principal, action == Action::\"exchange8:algo:write\", resource) when { p
 
 /// Default declarative policy set (Sentin8:Policy design §3.2/§3.4,
 /// seeded by `vertical enroll` as `origin='platform'`, `mode='enforced'`):
-/// action-granular scope permits over the LIVE effective scope set — the
+/// action-granular scope permits over the LIVE effective scope set - the
 /// exact mirror of the gates this service's handlers evaluate in step 5
 /// (policy design §4.3). Enforced mode: step 5 is the only
 /// gate; shadow is the emergency one-UPDATE rollback lever only.
 const POLICIES: &[PolicySetDecl] = &[PolicySetDecl {
     policy_set_name: "scope-mirror",
-    description: "Action-granular scope permits for exchange8:oms over the LIVE effective scope set. Enforced — step 5 is the only gate.",
+    description: "Action-granular scope permits for exchange8:oms over the LIVE effective scope set. Enforced - step 5 is the only gate.",
     // Shield text lives in SCOPE_MIRROR_POLICIES (single source).
     policies: SCOPE_MIRROR_POLICIES,
     schema: None,
@@ -47,7 +47,7 @@ const POLICIES: &[PolicySetDecl] = &[PolicySetDecl {
     default_enabled: true,
 }];
 
-/// Default ReBAC relation tuples (design §3.1c) — none declared by this
+/// Default ReBAC relation tuples (design §3.1c) - none declared by this
 /// service today; env admins author their own graph via the relations
 /// admin API.
 const RELATIONS: &[RelationDecl] = &[];
@@ -59,7 +59,7 @@ const PG_ROLES: &[PgRole] = &[PgRole {
     // Grants live in the exchange8 vertical database only (principles §6.6
     // database-per-vertical, schema-per-service).
     database: "exchange8",
-    // This service owns all its reads — no cross-schema grants.
+    // This service owns all its reads - no cross-schema grants.
     cross_schema_grants: &[],
 }];
 
@@ -94,7 +94,7 @@ const ERROR_CODES: &[ErrorCode] = &[ErrorCode {
 }];
 
 /// The declared RFW pages (public so the router tests assert the served
-/// set matches 1:1 — see `tests/handlers_oneshot.rs`).
+/// set matches 1:1 - see `tests/handlers_oneshot.rs`).
 pub(crate) const ADMIN_UI_PAGES: &[AdminUiPage] = &[
     AdminUiPage {
         route: "pegs",
@@ -123,14 +123,14 @@ pub(crate) const ADMIN_UI_PAGES: &[AdminUiPage] = &[
 /// workload this service presents a certificate for; `vertical enroll`
 /// upserts the rows so the fail-closed registry map admits the
 /// registration. Scopes use the full vocabulary form:
-/// - `exchange8:oms` / `oms` — the service's own workload (both
+/// - `exchange8:oms` / `oms` - the service's own workload (both
 ///   spellings granted; runtime call sites use the bare short name, the
 ///   map looks up the exact workload): bus produce/consume + the shared
 ///   certificate identity.
-/// - `exchange8:oms-policy` / `oms-policy` — Shield hot-reload
+/// - `exchange8:oms-policy` / `oms-policy` - Shield hot-reload
 ///   consumer + stat emitter pair.
-/// - `oms-audit` — shell audit-journal pusher workload (§6.8; boot 8c).
-/// - `exchange8-oms-tls` — database-free HostContextResolver resolve workload
+/// - `oms-audit` - shell audit-journal pusher workload (§6.8; boot 8c).
+/// - `exchange8-oms-tls` - database-free HostContextResolver resolve workload
 ///   (TLS-RLS-4: `GET /v1/resolve/hostname`, scope
 ///   `sentin8:sys:instances:read`).
 const M2M_GRANTS: &[M2mGrant] = &[

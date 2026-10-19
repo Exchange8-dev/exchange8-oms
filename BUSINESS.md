@@ -1,4 +1,4 @@
-# Exchange8:OMS — Business Requirements & Functionality
+# Exchange8:OMS - Business Requirements & Functionality
 
 > Audience: product owners, business analysts, and anyone evaluating what
 > Exchange8:OMS **does for the business**. For architecture read `README.md`;
@@ -27,20 +27,20 @@
 | Capability | Description |
 |---|---|
 | Pegged orders (primary) | Working price joins the peg's own side of the book (bid + offset / ask − offset), repriced as the quote moves |
-| Pegged orders (market) | Working price joins the opposite side with a monotonic ratchet — once working, the price only improves |
+| Pegged orders (market) | Working price joins the opposite side with a monotonic ratchet - once working, the price only improves |
 | Pegged orders (midpoint) | Works at the quote midpoint (spread required); validated against the venue's doubled-tick grid |
-| Dark pegged orders | Midpoint-priced, never visibly displayed — hidden execution, not a separate dark pool |
+| Dark pegged orders | Midpoint-priced, never visibly displayed - hidden execution, not a separate dark pool |
 | Iceberg execution | Display-slice reserve accounting: fill the visible slice, re-arm the next from the hidden reserve |
 | Stop / stop-limit orders | Held and released to the matching engine when the reference price (last / bid / ask) breaches the trigger |
 | Trailing stops | Trigger trails the best reference seen by a fixed offset, only ever tightening |
 | OCO / OCA groups | One-cancels-other / one-cancels-all groups: the first leg to fire executes and every survivor cancels; client-cancel of any member withdraws the whole group |
-| Index-linked stops | `stop_index` triggers watch a published index level (not the instrument's own quote) — trailing variants ratchet on the index the same way |
-| Complex (multi-leg) orders | Atomic all-or-none evaluation across legs — the strategy trades in full or not at all |
+| Index-linked stops | `stop_index` triggers watch a published index level (not the instrument's own quote) - trailing variants ratchet on the index the same way |
+| Complex (multi-leg) orders | Atomic all-or-none evaluation across legs - the strategy trades in full or not at all |
 | Execution algorithms | TWAP (uniform slices), VWAP (volume-profile-weighted slices), POV (percentage of realized volume) |
 | Auction participation | MOC / MOO / LOC / LOO orders queued for the auction uncross (never book-resting), with imbalance contribution |
-| Quote-driven re-evaluation | Per-instrument BBO/EBBO quote cache drives exactly the pegs on the changed instrument; quote events arrive over a live Bus stream subscription (no polling delay — evaluation starts the moment a quote is published) |
-| Child-order identity & idempotency | Scene-leased child order ids and client-key dedup — duplicate submissions return the original ack |
-| Lifecycle mirroring | Peg confirmations to the gateway and durable event mirrors for clearing/audit consumers (outbox family `exchange8` — one row per mutation, audit-journaled) |
+| Quote-driven re-evaluation | Per-instrument BBO/EBBO quote cache drives exactly the pegs on the changed instrument; quote events arrive over a live Bus stream subscription (no polling delay - evaluation starts the moment a quote is published) |
+| Child-order identity & idempotency | Scene-leased child order ids and client-key dedup - duplicate submissions return the original ack |
+| Lifecycle mirroring | Peg confirmations to the gateway and durable event mirrors for clearing/audit consumers (outbox family `exchange8` - one row per mutation, audit-journaled) |
 | Algo parent control | Operators pause/resume a running parent from the admin console; the durable `oms.algo_order.state` carries the plan across restarts |
 | Admin surfaces | Shield policy administration plus declared RFW admin pages for live pegs, held conditionals, and the algo parents (with pause/resume actions) |
 | Supervision gauges | The peg/conditional/algo counts + child-slice counter emit to the platform stat surface |
@@ -68,13 +68,13 @@
 
 | Capability | Business rule |
 |---|---|
-| Primary peg | Buying works at best-bid + offset; selling works at best-ask − offset — the client states the offset from the side it would join |
-| Market peg | Buying works near the ask, selling near the bid (joins the opposite side); once working, the price only improves — a market that would reprice worse is ignored |
+| Primary peg | Buying works at best-bid + offset; selling works at best-ask − offset - the client states the offset from the side it would join |
+| Market peg | Buying works near the ask, selling near the bid (joins the opposite side); once working, the price only improves - a market that would reprice worse is ignored |
 | Midpoint peg | Works at the midpoint of a live two-sided quote; a locked market (bid = ask) or a one-sided book holds the order rather than inventing a price |
 | Doubled-tick integrity | A midpoint that does not land on the venue's doubled price grid is held, never rounded to a near tick |
-| Dark peg | Prices like midpoint but the order is always hidden — dark execution is a display choice, not a separate matching venue |
+| Dark peg | Prices like midpoint but the order is always hidden - dark execution is a display choice, not a separate matching venue |
 | Peg limit is a hard ceiling/floor | Computed prices never cross the client limit; reaching the limit converts the peg into an ordinary limit order and repricing stops for good |
-| No-quote behavior | Without a two-sided live quote the peg acknowledges at the limit price and waits — it does not send an unprotected price to the book |
+| No-quote behavior | Without a two-sided live quote the peg acknowledges at the limit price and waits - it does not send an unprotected price to the book |
 | Continuous repricing | Every quote change re-evaluates the peg; a change on a working peg issues a cancel-replace at the computed price |
 
 ### Icebergs
@@ -91,10 +91,10 @@
 
 | Capability | Business rule |
 |---|---|
-| Held intent | Stops, stop-limits, trailing stops, and conditional/bracket legs never rest in the public book — they activate only when the trigger fires |
+| Held intent | Stops, stop-limits, trailing stops, and conditional/bracket legs never rest in the public book - they activate only when the trigger fires |
 | Trigger references | The trigger may watch last trade, best bid, or best ask; buy stops fire at-or-above the stop, sell stops at-or-below |
 | Release terms | On fire, the order releases as a market order or with its stop-limit price; the client learns the actual reference at fire time |
-| Trailing stops | The stop trails the best reference seen by a fixed offset; it only tightens — a market move that would loosen the protection is ignored |
+| Trailing stops | The stop trails the best reference seen by a fixed offset; it only tightens - a market move that would loosen the protection is ignored |
 | OCO / OCA groups | The first leg to trigger releases; remaining legs cancel automatically. Canceling one leg (client request) withdraws the whole bracket |
 | Idempotent triggers | Re-triggering an already-fired conditional is an explicit "already fired" response, not a silent duplicate |
 | Double-fire safety | Several held orders on one instrument can fire from one market move; each gets its own release, and group siblings close without cross-cancelling unrelated orders |
@@ -104,15 +104,15 @@
 | Capability | Business rule |
 |---|---|
 | TWAP | The parent quantity splits into uniform slices over the chosen horizon; any indivisible remainder is front-loaded one per interval and the plan always conserves total quantity |
-| VWAP | Slices follow the expected per-interval volume profile — a 3:1 profile puts roughly three-quarters of the remaining parent into the first interval |
+| VWAP | Slices follow the expected per-interval volume profile - a 3:1 profile puts roughly three-quarters of the remaining parent into the first interval |
 | POV | Participation is a percentage of realized volume per interval, capped by the parent's remaining quantity; the plan runs open-ended until the parent is exhausted |
-| Complex orders | A multi-leg strategy executes only when every leg can fill its full ratio simultaneously at its limit — a single short leg means nothing trades |
+| Complex orders | A multi-leg strategy executes only when every leg can fill its full ratio simultaneously at its limit - a single short leg means nothing trades |
 | Auction participation | MOC/MOO (market) and LOC/LOO (limit) orders queue for the auction; their quantities feed the published indicative imbalance before the uncross |
 
 ## 4. Business Events (Outbound)
 
 Outbound events (the `exchange8:{service}:{resource}:{operation}`
-vocabulary; outbox family `exchange8` — one row per mutation in the SAME
+vocabulary; outbox family `exchange8` - one row per mutation in the SAME
 transaction, relayed idempotently by the shell, audit-journaled):
 
 | Event family | When it fires |
@@ -139,7 +139,7 @@ rejected / repriced), Shield policy-set updates.
    unusable midpoint holds the order instead of approximating.
 4. One-sided, crossed, or locked markets hold pegs (and pull any working
    slice) rather than sending unprotected prices.
-5. Conditional orders never rest in the public book before their trigger —
+5. Conditional orders never rest in the public book before their trigger -
    no participant can observe the intent before release.
 6. Trailing stops only tighten; the protection level ratchets with the
    favorable extreme and never relaxes.
@@ -152,7 +152,7 @@ rejected / repriced), Shield policy-set updates.
    re-enters the market at the back of the queue.
 10. Duplicate order submissions with the same idempotency token return the
     original acknowledgment; duplicate client keys return the originally
-    assigned child order id — no double leasing.
+    assigned child order id - no double leasing.
 11. Every lifecycle decision produces a durable event record before
     delivery; delivery retries until the event plane accepts it (audit is
     delayed, never lost).
@@ -183,12 +183,12 @@ rejected / repriced), Shield policy-set updates.
 ## 7. KPIs / Success Criteria
 
 - **Reprice fidelity**: zero prices off the venue grid, zero trades through
-  a client limit, zero adverse market-peg reprices — every reprice provably
+  a client limit, zero adverse market-peg reprices - every reprice provably
   derives from the quote at that moment.
 - **Intent protection**: no conditional order rests in the public book;
   trigger evaluation never reveals held terms to participants.
 - **Slice-plan conservation**: every algo plan and iceberg executes exactly
-  its parent quantity — no child leakage, no over- or under-execution, and
+  its parent quantity - no child leakage, no over- or under-execution, and
   duplicate idempotent submissions never create extra orders.
 - **Responsiveness**: quote-driven repricing keeps each instrument's pegs
   current within the bounded re-evaluation set (one changed quote costs
@@ -203,28 +203,28 @@ rejected / repriced), Shield policy-set updates.
 
 ## 8. Dependencies & Reliance
 
-- **Exchange8:Gateway** — the only peg-management entry point; forwards
+- **Exchange8:Gateway** - the only peg-management entry point; forwards
   client orders, idempotency tokens, and receives confirmations with the
   client-facing id restored.
-- **Exchange8:MD / Exchange8:VFeeds** — the quote inputs (BBO/EBBO); pegs stop
+- **Exchange8:MD / Exchange8:VFeeds** - the quote inputs (BBO/EBBO); pegs stop
   repricing when quotes stall.
-- **Exchange8:ME** — the matching destination for working slices and released
+- **Exchange8:ME** - the matching destination for working slices and released
   stops; its lifecycle events drive slice re-arm and kill handling.
-- **Exchange8:Risk** — pre-trade authorization happens upstream; OMS only
+- **Exchange8:Risk** - pre-trade authorization happens upstream; OMS only
   re-validates tick compliance of computed prices.
-- **Exchange8:Clearing** — consumes the lifecycle mirror as the durable
+- **Exchange8:Clearing** - consumes the lifecycle mirror as the durable
   reconciliation set.
-- **Sentin8:Auth** — all token issuance/verification; M2M workloads
+- **Sentin8:Auth** - all token issuance/verification; M2M workloads
   (`exchange8:oms`/`oms` streams, `oms-audit`, `exchange8-oms-tls`) and
   cert-bound defaults.
-- **Sentin8:Policy (Shield)** — the only authorization gate; policy-set
+- **Sentin8:Policy (Shield)** - the only authorization gate; policy-set
   cache shared between admin and runtime paths.
-- **Sentin8:Bus / Sentin8:Sys** — durable event delivery (outbox relay)
+- **Sentin8:Bus / Sentin8:Sys** - durable event delivery (outbox relay)
   and audit ingest; both degrade to delayed delivery, never loss.
-- **Sentin8:DB (PostgreSQL 18, db `exchange8`, schema `oms`)** —
+- **Sentin8:DB (PostgreSQL 18, db `exchange8`, schema `oms`)** -
   conditional/complex/algo skeletons, outbox, audit journal; never touched
   without a tenant context.
-- **Platform shell (`sentin8::shell`)** — registration, pool, health,
+- **Platform shell (`sentin8::shell`)** - registration, pool, health,
   drain, allocator; and `sentin8-tls` for in-process post-quantum TLS.
 
 ## 9. Acceptance Criteria
@@ -257,7 +257,7 @@ rejected / repriced), Shield policy-set updates.
 11. MOC/MOO/LOC/LOO orders contribute to the published indicative
     imbalance and drain only at the uncross.
 12. Duplicate submissions (same idempotency token or client key) return the
-    original ack/child id — no duplicate orders, no double lease.
+    original ack/child id - no duplicate orders, no double lease.
 13. Every durable table is RLS-forced with provable env isolation (no
     context → zero rows; cross-env → zero rows; contextless insert →
     rejected).
@@ -276,7 +276,7 @@ rejected / repriced), Shield policy-set updates.
 ## 10. Open Business Questions
 
 - Business-side confirmation of the event payload contract for the peg
-  lifecycle mirror (the implemented payloads are payload-complete — the
+  lifecycle mirror (the implemented payloads are payload-complete - the
   envelope carries the full supervision snapshot; consumer sign-off on the
   per-field projection for Gateway/Clearing remains the open confirmation).
 - Index-linked triggers (`stop_index` implemented against index

@@ -3,33 +3,33 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Exchange8:OMS runtime wiring — the instrument-sharded evaluation plane + admin
+//! Exchange8:OMS runtime wiring - the instrument-sharded evaluation plane + admin
 //! handlers (DESIGN.md §7 task graph).
 //!
 //! Wires the pure cores (`pegs`, `peg_machine`, `triggers`, `order_types`)
 //! onto the runtime:
 //!
-//! - **Quote consumer task** — one Bus consumer over the vertical's stream
+//! - **Quote consumer task** - one Bus consumer over the vertical's stream
 //!   family: every consolidated BBO change (`exchange8:md:bbo:updated`,
 //!   payload `exchange8::contracts::events::BboUpdated`) routes into the
 //!   instrument's shard queue by `instrument_id % N` (the same hash shape
 //!   the ME shards use). The producer side (MD/VFeeds publish sites) is
-//!   their own wiring pass — the consumer runs against the declared family
+//!   their own wiring pass - the consumer runs against the declared family
 //!   and idles (fail-open) until the producer publishes (consumers may run
 //!   ahead of producers; the seam is listed in DESIGN.md §10).
-//! - **Shard evaluator tasks** — one task per instrument shard owning a
+//! - **Shard evaluator tasks** - one task per instrument shard owning a
 //!   `TriggerEngine` + the quote cache + the peg list; single-writer (no
 //!   locks on the evaluation path).
-//! - **Algo scheduler task** — the interval pump advancing running
+//! - **Algo scheduler task** - the interval pump advancing running
 //!   `oms.algo_order` parents: paused/complete/cancelled parents idle, and
 //!   every transition is bound durably (the `running|paused|complete|
 //!   cancelled` CHECK vocabulary) with the transition event + audit journal
 //!   row in one transaction (DESIGN.md §3).
-//! - **Admin handlers** — the declared RFW pages (`pegs`, `conditionals`)
+//! - **Admin handlers** - the declared RFW pages (`pegs`, `conditionals`)
 //!   + the `algos` data/pause/resume surface, Shield-gated per the refdata
 //!   `handlers::admin_ui_page` pattern.
 //!
-//! Working pegs and trigger holds are memory-resident (DESIGN.md §3 —
+//! Working pegs and trigger holds are memory-resident (DESIGN.md §3 -
 //! rebuildable from Gateway replay / Clearing mirror); the durable
 //! conditional/algo rows are DB-bound and authoritative.
 //!
@@ -52,7 +52,7 @@ use crate::order_types::QuoteCache;
 use crate::pegs::Quote;
 use crate::triggers::ConditionalOrder;
 
-/// Default shard count — the ME's hash shape (design §7: the same
+/// Default shard count - the ME's hash shape (design §7: the same
 /// `instrument_id % N` sharding as the matching engine).
 pub const DEFAULT_SHARDS: usize = 64;
 
@@ -66,7 +66,7 @@ pub fn shard_of(instrument_id: u32, shards: usize) -> usize {
 pub const INSTRUMENT_PEG_CAP: usize = 5_000;
 
 // ---------------------------------------------------------------------------
-// Shard plane (single writer per instrument shard — DESIGN.md §7)
+// Shard plane (single writer per instrument shard - DESIGN.md §7)
 // ---------------------------------------------------------------------------
 
 /// One shard's runtime state: the trigger engine + the quote cache + the
@@ -91,7 +91,7 @@ static SHARD_SENDERS: std::sync::OnceLock<
     Arc<HashMap<usize, exchange8::wire::BoundedSender<ShardInput>>>,
 > = std::sync::OnceLock::new();
 
-/// Snapshot the shard runtimes (`None` pre-boot — the admin handlers then
+/// Snapshot the shard runtimes (`None` pre-boot - the admin handlers then
 /// serve empty tables).
 pub fn shards() -> Option<&'static Arc<HashMap<usize, Arc<tokio::sync::Mutex<ShardRuntime>>>>> {
     SHARD_RUNTIMES.get()
@@ -105,12 +105,12 @@ pub fn instrument_of(peg: &crate::peg_machine::PegOrder) -> Option<u32> {
 
 /// The peg → instrument projection: the peg registration carries the
 /// instrument in its id (the supervisor's registry map `peg_id →
-/// instrument_id` mirrors the Gateway id restore — DESIGN.md §4.1 record).
+/// instrument_id` mirrors the Gateway id restore - DESIGN.md §4.1 record).
 fn instrument_index(peg_id: u64) -> Option<u32> {
     INSTRUMENT_INDEX.lock().unwrap().get(&peg_id).copied()
 }
 
-/// The peg registries — process-wide sharded-lock maps (the registration
+/// The peg registries - process-wide sharded-lock maps (the registration
 /// writer and the evaluator/every shard reader share them; lock hold is
 /// O(1) map access, never an evaluation).
 static INSTRUMENT_INDEX: std::sync::LazyLock<std::sync::Mutex<HashMap<u64, u32>>> =
@@ -134,7 +134,7 @@ pub enum ShardInput {
 
 /// Apply one input to the shard's owned state (the pure-core call
 /// sequence; every peg ME-action and trigger fire projects into the egress
-/// plane's outbox rows — the lifecycle mirror families, DESIGN.md §4).
+/// plane's outbox rows - the lifecycle mirror families, DESIGN.md §4).
 async fn evaluate(rt: &tokio::sync::Mutex<ShardRuntime>, input: ShardInput) {
     // Collect the egress work OUTSIDE the shard lock (the projections are
     // pure staging calls).
@@ -156,7 +156,7 @@ async fn evaluate(rt: &tokio::sync::Mutex<ShardRuntime>, input: ShardInput) {
                     },
                 );
                 // The dirty set drives the re-evaluation pass (one pass
-                // per quote — the change-filtered peg re-price + the
+                // per quote - the change-filtered peg re-price + the
                 // instrument tick's trigger evaluation).
                 for dirty in shard.quotes.take_dirty() {
                     let Some(snapshot) = shard.quotes.quote(dirty) else {
@@ -227,7 +227,7 @@ fn stage_armed_mirror(order: &ConditionalOrder) {
 }
 
 /// Project one trigger-engine action set into the egress stage (the
-/// conditional family mirrors — release + sibling-cancel pairs).
+/// conditional family mirrors - release + sibling-cancel pairs).
 fn project_trigger_actions(instrument_id: u32, actions: Vec<crate::triggers::TriggerAction>) {
     for action in actions {
         let identity = EventIdentity {
@@ -294,7 +294,7 @@ fn pegs_on(
 
 /// The in-process peg-action registry: the egress projector's stage for the
 /// supervision plane's ME actions + the event mirrors (the writer task
-/// drains them into `oms.outbox` — batched 1000 events / 5 ms, the ME
+/// drains them into `oms.outbox` - batched 1000 events / 5 ms, the ME
 /// writer budget; DESIGN.md §4 egress plane).
 static EGRESS_STAGE: std::sync::OnceLock<(
     tokio::sync::mpsc::Sender<StagedEvent>,
@@ -318,17 +318,17 @@ pub struct StagedEvent {
 }
 
 /// Stage one event for the outbox writer (non-blocking; a full stage drops
-/// the event with a warn — the durable writer applies the batch budget and
+/// the event with a warn - the durable writer applies the batch budget and
 /// a saturated stage is the same backpressure the ME egress channel has).
 pub fn stage_event(ev: StagedEvent) {
     if let Some((tx, _)) = EGRESS_STAGE.get() {
         if tx.try_send(ev).is_err() {
-            tracing::warn!("oms egress stage saturated — event dropped");
+            tracing::warn!("oms egress stage saturated - event dropped");
         }
     }
 }
 
-/// Open the egress stage channel (once — `spawn_tasks` calls it first).
+/// Open the egress stage channel (once - `spawn_tasks` calls it first).
 fn open_egress_stage() -> &'static (
     tokio::sync::mpsc::Sender<StagedEvent>,
     tokio::sync::Mutex<tokio::sync::mpsc::Receiver<StagedEvent>>,
@@ -339,14 +339,14 @@ fn open_egress_stage() -> &'static (
     })
 }
 
-/// Writer budget — the ME egress writer's batching (1000 events / 5 ms
+/// Writer budget - the ME egress writer's batching (1000 events / 5 ms
 /// whichever first; DESIGN.md §7 writer budget).
 const EGRESS_BATCH_EVENTS: usize = 1_000;
 const EGRESS_FLUSH_TICK_MS: u64 = 5;
 
 /// The egress writer: batch staged events into `oms.outbox` rows under one
 /// RLS-contexted transaction per env group per flush. The shell's relay
-/// (boot 8b) produces the rows to Bus — this task only stages them
+/// (boot 8b) produces the rows to Bus - this task only stages them
 /// durably. An insert failure drops that event with an error log (the
 /// supervision plane re-decides from current state; the peg mirrors are
 /// observer-visible only).
@@ -354,7 +354,7 @@ async fn egress_writer(pool: sqlx::PgPool, rx: &mut tokio::sync::mpsc::Receiver<
     loop {
         let mut batch: Vec<StagedEvent> = Vec::with_capacity(EGRESS_BATCH_EVENTS);
         let Some(first) = rx.recv().await else {
-            break; // channel closed — stage done
+            break; // channel closed - stage done
         };
         batch.push(first);
         let deadline =
@@ -363,10 +363,10 @@ async fn egress_writer(pool: sqlx::PgPool, rx: &mut tokio::sync::mpsc::Receiver<
             match tokio::time::timeout_at(deadline, rx.recv()).await {
                 Ok(Some(ev)) => batch.push(ev),
                 Ok(None) => break,
-                Err(_) => break, // tick expired — flush what we have
+                Err(_) => break, // tick expired - flush what we have
             }
         }
-        // Group by env (the RLS context is transaction-local — the ME
+        // Group by env (the RLS context is transaction-local - the ME
         // writer's per-env grouping).
         let mut envs: Vec<Uuid> = Vec::new();
         for ev in &batch {
@@ -378,7 +378,7 @@ async fn egress_writer(pool: sqlx::PgPool, rx: &mut tokio::sync::mpsc::Receiver<
             let mut tx = match pool.begin().await {
                 Ok(t) => t,
                 Err(e) => {
-                    tracing::error!(error = %e, "oms egress writer: tx begin failed — batch dropped");
+                    tracing::error!(error = %e, "oms egress writer: tx begin failed - batch dropped");
                     continue;
                 }
             };
@@ -395,7 +395,7 @@ async fn egress_writer(pool: sqlx::PgPool, rx: &mut tokio::sync::mpsc::Receiver<
             }
         }
     }
-    tracing::info!("oms egress writer: channel closed — stopped");
+    tracing::info!("oms egress writer: channel closed - stopped");
 }
 
 /// The `EventIdentity` for one staged event (rebuilt for the insert).
@@ -496,7 +496,7 @@ pub fn spawn_tasks(core: Arc<AppState>) {
     // The algo scheduler (durable parent binding; fail-open).
     spawn_algo_pump(Arc::clone(&core));
     // The egress writer: drains the stage into `oms.outbox` rows (batched
-    // 1000 events / 5 ms — the ME writer budget; DESIGN.md §7). The shell
+    // 1000 events / 5 ms - the ME writer budget; DESIGN.md §7). The shell
     // relay (8b) produces them; the audit pusher (8c) journals the paired
     // audit rows.
     let (_, rx) = open_egress_stage();
@@ -508,7 +508,7 @@ pub fn spawn_tasks(core: Arc<AppState>) {
 }
 
 /// Project one `PegAction` decision into the egress stage (the peg
-/// lifecycle mirror — DESIGN.md §4 vocabulary; the actions map 1:1).
+/// lifecycle mirror - DESIGN.md §4 vocabulary; the actions map 1:1).
 fn project_peg_action(
     peg_id: u64,
     peg: &crate::peg_machine::PegOrder,
@@ -517,7 +517,7 @@ fn project_peg_action(
     let instrument_id = instrument_index(peg_id);
     let env_id = peg_environment(peg_id);
     let Some((instrument_id, env_id)) = instrument_id.zip(env_id) else {
-        return; // unregistered/unattributed peg — nothing to mirror
+        return; // unregistered/unattributed peg - nothing to mirror
     };
     use crate::peg_machine::PegAction;
     let (op, snapshot) = match action {
@@ -576,7 +576,7 @@ fn op_key(op: &crate::events::PegOp) -> &'static str {
     }
 }
 
-/// The tenant environment a peg attributes to (`{SERVICE}_ENV_ID` chain —
+/// The tenant environment a peg attributes to (`{SERVICE}_ENV_ID` chain -
 /// the same resolve the MemBus handles apply, so the events and the
 /// publishes share one tenant identity).
 fn peg_environment(peg_id: u64) -> Option<Uuid> {
@@ -606,11 +606,11 @@ async fn shard_loop(
 // Quote consumer (Bus → shard queues; DESIGN.md §7 reader task)
 // ---------------------------------------------------------------------------
 
-/// The quote event OMS consumes (the declared market-data vocabulary —
+/// The quote event OMS consumes (the declared market-data vocabulary -
 /// master design §7.1; payload `exchange8::contracts::events::BboUpdated`).
 pub const QUOTE_EVENT: &str = "exchange8:md:bbo:updated";
 /// The consumed stream family (the Bus stream key is `bus:{env}:exchange8`
-/// — the bare vertical slug every vertical producer uses; the refdata and
+/// - the bare vertical slug every vertical producer uses; the refdata and
 /// gateway leaves set the same convention).
 pub const QUOTE_STREAM_FAMILY: &str = "exchange8";
 /// The consumer group (quote-reader fan-out across instances rides it).
@@ -620,13 +620,13 @@ pub const QUOTE_CONSUMER_GROUP: &str = "exchange8-oms-quotes";
 /// against the vertical's stream family over the Bus SSE surface,
 /// decoding the BBO payload and routing into the instrument shard
 /// queues (bounded `try_send`; a full queue drops the stage and the next
-/// quote re-drives evaluation — the newest-wins quote semantics). Runs
+/// quote re-drives evaluation - the newest-wins quote semantics). Runs
 /// ahead of the producers: a Bus outage or an empty stream idles the
-/// loop — pegs hold their last evaluation (quote-stall semantics,
+/// loop - pegs hold their last evaluation (quote-stall semantics,
 /// DESIGN.md §6).
 ///
 /// BUSCONNP-1: the SSE direct-consumer pattern (the hotel8/trade8/
-/// email8 shape) — one long-lived `GET /v1/consume/sse` connection per
+/// email8 shape) - one long-lived `GET /v1/consume/sse` connection per
 /// epoch with per-message `POST /v1/ack`. The bus holds the blocking
 /// read server-side on its own dedicated connection; the OMS never
 /// issues short-interval `POST /v1/consume` blocking polls (a 1s-block
@@ -634,7 +634,7 @@ pub const QUOTE_CONSUMER_GROUP: &str = "exchange8-oms-quotes";
 /// GLIDE watchdog's pending count above its overload threshold).
 async fn quote_consumer(core: &Arc<AppState>) -> anyhow::Result<()> {
     // Cert-presenting Bus client (CERTFREE-4V): the `exchange8:oms`
-    // workload CERTIFICATE is the identity — no DCR, no token; the
+    // workload CERTIFICATE is the identity - no DCR, no token; the
     // mint retries while the fleet boots.
     let bus = loop {
         match sentin8::bus::client::BusClient::for_workload(
@@ -671,13 +671,13 @@ async fn quote_consumer(core: &Arc<AppState>) -> anyhow::Result<()> {
         if let Err(e) = quote_sse_loop(&bus, resp.bytes_stream()).await {
             tracing::warn!(error = %e, "oms: quote SSE loop exited");
         }
-        tracing::info!("oms: quote SSE disconnected — reconnecting");
+        tracing::info!("oms: quote SSE disconnected - reconnecting");
     }
 }
 
 /// Process the quote SSE stream until it drops. Each message is decoded
 /// and routed (newest-wins), then acked; non-quote events in the family
-/// (peg mirrors, ME lifecycle …) are acked and skipped — the evaluator
+/// (peg mirrors, ME lifecycle …) are acked and skipped - the evaluator
 /// consumes quotes only. Malformed BBO payloads are acked and skipped
 /// (at-least-once + the shard's newest-wins semantics make a skip safe).
 async fn quote_sse_loop<T, E>(
@@ -751,24 +751,24 @@ where
 }
 
 // ---------------------------------------------------------------------------
-// Algo scheduler — the durable `oms.algo_order.state` binding (DESIGN.md §3)
+// Algo scheduler - the durable `oms.algo_order.state` binding (DESIGN.md §3)
 // ---------------------------------------------------------------------------
 
 /// The algo scheduler pump cadence (bounded; every step is idempotent per
-/// parent — a re-delivered pump hits the guarded insert/state predicate).
+/// parent - a re-delivered pump hits the guarded insert/state predicate).
 const ALGO_PUMP_TICK_MS: u64 = 1_000;
 
 /// The durable algo state vocabulary (the `oms.algo_order.state` CHECK).
 pub const ALGO_STATE_RUNNING: &str = "running";
-/// `paused` — the plan halted; resumable.
+/// `paused` - the plan halted; resumable.
 pub const ALGO_STATE_PAUSED: &str = "paused";
-/// `complete` — the plan consumed its full parent quantity (terminal).
+/// `complete` - the plan consumed its full parent quantity (terminal).
 pub const ALGO_STATE_COMPLETE: &str = "complete";
-/// `cancelled` — withdrawn before completion (terminal).
+/// `cancelled` - withdrawn before completion (terminal).
 pub const ALGO_STATE_CANCELLED: &str = "cancelled";
 
 /// The durable algo parent counts for the stat gauges (running parents +
-/// the slices-issued counter — owner-side env sweep under per-env context,
+/// the slices-issued counter - owner-side env sweep under per-env context,
 /// the pump's own maintenance view; §4.3d same-connection rule). A DB
 /// outage degrades both to 0 (a gauge, never a control signal).
 pub async fn runtime_algo_counts(state: &Arc<AppState>) -> (u64, u64) {
@@ -823,7 +823,7 @@ async fn algo_counts(state: &Arc<AppState>) -> anyhow::Result<(u64, u64)> {
     Ok((running.max(0) as u64, slices.max(0) as u64))
 }
 
-/// The algo scheduler task (the pump loop; fail-open — a DB outage never
+/// The algo scheduler task (the pump loop; fail-open - a DB outage never
 /// blocks the peg/trigger plane; the next tick retries).
 fn spawn_algo_pump(state: Arc<AppState>) {
     tokio::spawn(async move {
@@ -838,12 +838,12 @@ fn spawn_algo_pump(state: Arc<AppState>) {
 
 /// Advance every RUNNING algo parent one pump step per env: the parent's
 /// slice plan derives per pump from the durable row + the child frontier
-/// (`oms.algo_child_order.slice_no` — the resume-restart frontier), so the
+/// (`oms.algo_child_order.slice_no` - the resume-restart frontier), so the
 /// durable state is authoritative across restarts. Every step is ONE
 /// transaction (child row + outbox + audit journal).
 async fn pump_algo_orders(state: &Arc<AppState>) -> anyhow::Result<u32> {
     use sentin8::config::SYSTEM_ENV_ID;
-    // The pump is owner-side maintenance spanning envs — envs resolve from
+    // The pump is owner-side maintenance spanning envs - envs resolve from
     // the platform helper's DISTINCT env scan over this schema's outbox
     // (the gateway purge pattern; SECURITY DEFINER, env UUIDs only).
     let envs: Vec<Uuid> =
@@ -853,7 +853,7 @@ async fn pump_algo_orders(state: &Arc<AppState>) -> anyhow::Result<u32> {
             .unwrap_or_else(|e| {
                 tracing::debug!(
                     error = %e,
-                    "oms algo pump: env scan unavailable (helper not provisioned) — system env only"
+                    "oms algo pump: env scan unavailable (helper not provisioned) - system env only"
                 );
                 vec![SYSTEM_ENV_ID]
             });
@@ -897,7 +897,7 @@ async fn issue_algo_step(
 ) -> anyhow::Result<bool> {
     let mut tx = state.pool.begin().await.map_err(|e| anyhow::anyhow!(e))?;
     sentin8::shell::set_tenant_context(&mut tx, env_id).await;
-    // The parent lock: state + plan (the durable binding decides — paused)
+    // The parent lock: state + plan (the durable binding decides - paused)
     // complete/cancelled parents idle).
     let row: Option<(String, Option<String>)> = sqlx::query_as(
         "SELECT state, slice_size::text FROM oms.algo_order WHERE id = $1 AND env_id = $2 FOR UPDATE",
@@ -942,7 +942,7 @@ async fn issue_algo_step(
         correlation_id: algo_id.to_string(),
         idempotency_key: format!("algo-slice:{algo_id}:{slice_no}"),
     };
-    // The child row: idempotent per (parent, slice_no) re-delivery — the
+    // The child row: idempotent per (parent, slice_no) re-delivery - the
     // UNIQUE (env_id, parent_order_id, slice_no) semantics ride the
     // ON CONFLICT DO NOTHING + RETURNING guard here.
     let inserted: Option<(Uuid,)> = sqlx::query_as(
@@ -1076,7 +1076,7 @@ pub async fn algo_state_transition(
 // ---------------------------------------------------------------------------
 
 /// The correlation id from the platform middleware (`X-Sentin8-Correlation-
-/// Id`; a missing header — direct CLI/dev calls — generates one so every
+/// Id`; a missing header - direct CLI/dev calls - generates one so every
 /// envelope stays complete).
 pub(crate) fn correlation_from(headers: &axum::http::HeaderMap) -> String {
     headers
@@ -1098,9 +1098,9 @@ pub(crate) fn correlation_from(headers: &axum::http::HeaderMap) -> String {
     security(),
     tag = "exchange8-admin",
 )]
-/// `GET /v1/admin/ui/{page}` — the declared RFW page definition (Dash
+/// `GET /v1/admin/ui/{page}` - the declared RFW page definition (Dash
 /// renders it; gated by the page's Shield action; 404 for undeclared
-/// slugs) — the refdata `handlers::admin_ui_page` pattern.
+/// slugs) - the refdata `handlers::admin_ui_page` pattern.
 pub async fn admin_ui_page(
     State(state): State<Arc<AppState>>,
     headers: axum::http::HeaderMap,
@@ -1149,7 +1149,7 @@ pub struct PegRow {
     tag = "exchange8-admin",
 )]
 
-/// `POST /v1/admin/pegs` — the live peg table (RFW page data; read-only).
+/// `POST /v1/admin/pegs` - the live peg table (RFW page data; read-only).
 /// Gate: the `pegs` page's read scope.
 pub async fn admin_pegs(
     State(state): State<Arc<AppState>>,
@@ -1210,7 +1210,7 @@ pub struct ConditionalRow {
     tag = "exchange8-admin",
 )]
 
-/// `POST /v1/admin/conditionals` — the held conditional table (RFW page
+/// `POST /v1/admin/conditionals` - the held conditional table (RFW page
 /// data; read-only). Gate: the `conditionals` page's read scope.
 pub async fn admin_conditionals(
     State(state): State<Arc<AppState>>,
@@ -1270,7 +1270,7 @@ pub struct AlgoOrderRow {
     tag = "exchange8-admin",
 )]
 
-/// `POST /v1/admin/algo-orders` — the durable algo parents (RFW page data;
+/// `POST /v1/admin/algo-orders` - the durable algo parents (RFW page data;
 /// RLS-scoped read of `oms.algo_order` with explicit `env_id`). Gate: the
 /// `algos` read scope.
 pub async fn admin_algo_orders(
@@ -1315,7 +1315,7 @@ pub async fn admin_algo_orders(
     tag = "exchange8-admin",
 )]
 
-/// `POST /v1/admin/algo-orders/{id}/pause` — pause the running parent
+/// `POST /v1/admin/algo-orders/{id}/pause` - pause the running parent
 /// (`running → paused`; the durable binding + transition event + audit).
 pub async fn pause_algo_order(
     State(state): State<Arc<AppState>>,
@@ -1325,7 +1325,7 @@ pub async fn pause_algo_order(
     pause_resume(state, headers, algo_id, ALGO_STATE_PAUSED, AlgoOp::Paused).await
 }
 
-/// `POST /v1/admin/algo-orders/{id}/resume` — resume the paused parent
+/// `POST /v1/admin/algo-orders/{id}/resume` - resume the paused parent
 /// (`paused → running`).
 #[utoipa::path(
     post,
@@ -1373,7 +1373,7 @@ async fn pause_resume(
 }
 
 // ---------------------------------------------------------------------------
-// RFW page definitions (refdata `admin_ui.rs` pattern — pure data)
+// RFW page definitions (refdata `admin_ui.rs` pattern - pure data)
 // ---------------------------------------------------------------------------
 
 /// The RFW page definitions (the registration-declared pages + the algo
@@ -1476,7 +1476,7 @@ pub mod admin_pages {
         }
     }
 
-    /// The OMS admin pages — the registration-declared set (`pegs`,
+    /// The OMS admin pages - the registration-declared set (`pegs`,
     /// `conditionals`) plus the `algos` surface (the durable parent
     /// binding's admin view + the pause/resume actions).
     pub fn oms_pages() -> Vec<RfwPage> {
@@ -1561,7 +1561,7 @@ pub mod admin_pages {
             for page in pages {
                 let v = page.to_rfw();
                 assert_eq!(v["slug"], page.slug);
-                // Icons are Material code points — hex strings (the `0x`
+                // Icons are Material code points - hex strings (the `0x`
                 // prefix is the registration payload's spelling).
                 let icon = v["icon"].as_str().unwrap();
                 assert!(
@@ -1577,7 +1577,7 @@ pub mod admin_pages {
 
         #[test]
         fn action_resources_are_post_friendly() {
-            // The RFW renderer only supports POST — actions never name
+            // The RFW renderer only supports POST - actions never name
             // PUT/DELETE.
             for page in oms_pages() {
                 for s in &page.sections {
@@ -1597,7 +1597,7 @@ mod tests {
 
     #[test]
     fn shard_assignment_matches_the_me_hash() {
-        // Same instrument → same shard, always (ME parity — §7).
+        // Same instrument → same shard, always (ME parity - §7).
         assert_eq!(shard_of(7, DEFAULT_SHARDS), shard_of(7, DEFAULT_SHARDS));
         assert_eq!(shard_of(3, DEFAULT_SHARDS), shard_of(67, DEFAULT_SHARDS));
         assert_eq!(shard_of(999, 1), 0);
@@ -1635,7 +1635,7 @@ mod tests {
     #[tokio::test]
     async fn evaluation_plane_routes_quotes_and_stages_mirrors() {
         // Boot the plane in this test process (64 shards + the consumer
-        // task — the consumer idles against the disabled bus URL).
+        // task - the consumer idles against the disabled bus URL).
         let config = Arc::new(sentin8::shell::ShellConfig {
             service_type: "exchange8:oms",
             port: 0,

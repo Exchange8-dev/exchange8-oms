@@ -3,17 +3,17 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Exchange8:OMS HTTP handler tests (DESIGN.md §9 — the router shape).
+//! Exchange8:OMS HTTP handler tests (DESIGN.md §9 - the router shape).
 //!
 //! Drives the REAL router through `tower::ServiceExt::oneshot`: route
 //! mounting, the authorization pipeline (bearer → Shield step 5), status
-//! codes, and the JSON error envelope — without a database. DB-free
-//! guarantee: every data-path handler runs `verify_token` (steps 1–4)
+//! codes, and the JSON error envelope - without a database. DB-free
+//! guarantee: every data-path handler runs `verify_token` (steps 1-4)
 //! BEFORE the first pool access, so a bearer-less request never reaches
 //! `state.pool`.
 //!
 //! The OMS crate is bin-only, so the handler modules are pulled in via
-//! `#[path]` — the same pattern as the gateway/refdata handler tests. The
+//! `#[path]` - the same pattern as the gateway/refdata handler tests. The
 //! included modules keep their dead-code allows (test-binary inclusion
 //! compiles the whole module set; only the router surface is exercised).
 
@@ -108,8 +108,8 @@ fn req(method: &str, uri: &str) -> Request<Body> {
         .unwrap()
 }
 
-/// 1 — every route rejects a bearer-less request with 401 (or the JSON
-/// extractor's 415 on POST routes — the auth pipeline before any DB work).
+/// 1 - every route rejects a bearer-less request with 401 (or the JSON
+/// extractor's 415 on POST routes - the auth pipeline before any DB work).
 #[tokio::test]
 async fn every_route_rejects_unauthenticated_with_401() {
     let app = router();
@@ -133,7 +133,7 @@ async fn every_route_rejects_unauthenticated_with_401() {
     }
 }
 
-/// 2 — wrong-method on an existing path → 405 (route table shape check).
+/// 2 - wrong-method on an existing path → 405 (route table shape check).
 #[tokio::test]
 async fn wrong_method_gets_405_not_404() {
     let app = router();
@@ -141,7 +141,7 @@ async fn wrong_method_gets_405_not_404() {
     assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
 }
 
-/// 3 — unmatched path → 404.
+/// 3 - unmatched path → 404.
 #[tokio::test]
 async fn unknown_path_gets_404() {
     let app = router();
@@ -149,7 +149,7 @@ async fn unknown_path_gets_404() {
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
-/// 4 — error envelope: plain-text auth message (never SQL internals).
+/// 4 - error envelope: plain-text auth message (never SQL internals).
 #[tokio::test]
 async fn unauthenticated_error_envelope_is_plain_text_401() {
     let app = router();
@@ -163,7 +163,7 @@ async fn unauthenticated_error_envelope_is_plain_text_401() {
     );
 }
 
-/// 5 — the RFW page definitions mount: bearer-less requests on every slug
+/// 5 - the RFW page definitions mount: bearer-less requests on every slug
 /// (declared or not) hit the auth gate BEFORE the route/page resolution.
 #[tokio::test]
 async fn admin_ui_pages_are_mounted() {
@@ -182,7 +182,7 @@ async fn admin_ui_pages_are_mounted() {
     }
 }
 
-/// 6 — the registration's declared admin_ui pages match the served set.
+/// 6 - the registration's declared admin_ui pages match the served set.
 #[test]
 fn registration_admin_ui_pages_match_the_router() {
     // `--print-registration` declares `pegs` / `conditionals` + the algos
@@ -198,7 +198,7 @@ fn registration_admin_ui_pages_match_the_router() {
     assert_eq!(declared, served);
 }
 
-/// 7 — the event vocabulary constants stay inside the vertical vocabulary.
+/// 7 - the event vocabulary constants stay inside the vertical vocabulary.
 #[test]
 fn oms_event_names_follow_the_vertical_format() {
     for name in [

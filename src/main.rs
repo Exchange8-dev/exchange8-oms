@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:OMS
 // SPDX-License-Identifier: Apache-2.0
 
-//! Exchange8:OMS service binary — peg/iceberg supervision + stop/conditional triggers.
+//! Exchange8:OMS service binary - peg/iceberg supervision + stop/conditional triggers.
 //!
 //! Design: `design/sentin8-exchange8-oms-technical-design.md` (see the
 //! service doc for the exact file). Core logic in the sibling modules;
@@ -11,7 +11,7 @@
 //! `sentin8-shell` crate (registration, DB pool, health). The instrument-
 //! sharded evaluation plane (quote/lifecycle readers → per-instrument peg
 //! supervisors + trigger engine) spawns at boot (`runtime.rs::spawn_tasks`)
-//! — DESIGN.md §7 task graph.
+//! - DESIGN.md §7 task graph.
 
 #![allow(dead_code)]
 
@@ -42,7 +42,7 @@ fn extend_router(
             "/v1/admin/ui/{page}",
             axum::routing::get(runtime::admin_ui_page),
         )
-        // Data endpoints (RFW data fetch + POST aliases — the renderer
+        // Data endpoints (RFW data fetch + POST aliases - the renderer
         // only supports POST).
         .route("/v1/admin/pegs", axum::routing::post(runtime::admin_pegs))
         .route(
@@ -75,7 +75,7 @@ async fn main() -> anyhow::Result<()> {
                 // MD/VFeeds via the Bus consumer; peg/iceberg/algo inputs
                 // via the in-process supervisor registry) + one evaluation
                 // task per instrument shard; the egress plane is the
-                // shell's relay/pusher (boot 8b/8c) — this never
+                // shell's relay/pusher (boot 8b/8c) - this never
                 // duplicates them.
                 let state = std::sync::Arc::new(core);
                 crate::runtime::spawn_tasks(state.clone());

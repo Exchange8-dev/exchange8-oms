@@ -15,7 +15,7 @@
         "tags": [
           "exchange8-admin"
         ],
-        "summary": "`POST /v1/admin/algo-orders` — the durable algo parents (RFW page data;\nRLS-scoped read of `oms.algo_order` with explicit `env_id`). Gate: the\n`algos` read scope.",
+        "summary": "`POST /v1/admin/algo-orders` - the durable algo parents (RFW page data;\nRLS-scoped read of `oms.algo_order` with explicit `env_id`). Gate: the\n`algos` read scope.",
         "operationId": "admin_algo_orders",
         "responses": {
           "200": {
@@ -41,7 +41,7 @@
         "tags": [
           "exchange8-admin"
         ],
-        "summary": "`POST /v1/admin/algo-orders/{id}/pause` — pause the running parent\n(`running → paused`; the durable binding + transition event + audit).",
+        "summary": "`POST /v1/admin/algo-orders/{id}/pause` - pause the running parent\n(`running → paused`; the durable binding + transition event + audit).",
         "operationId": "pause_algo_order",
         "responses": {
           "200": {
@@ -67,7 +67,7 @@
         "tags": [
           "exchange8-admin"
         ],
-        "summary": "`POST /v1/admin/algo-orders/{id}/resume` — resume the paused parent\n(`paused → running`).",
+        "summary": "`POST /v1/admin/algo-orders/{id}/resume` - resume the paused parent\n(`paused → running`).",
         "operationId": "resume_algo_order",
         "responses": {
           "200": {
@@ -219,7 +219,7 @@
         "tags": [
           "exchange8-admin"
         ],
-        "summary": "`POST /v1/admin/conditionals` — the held conditional table (RFW page\ndata; read-only). Gate: the `conditionals` page's read scope.",
+        "summary": "`POST /v1/admin/conditionals` - the held conditional table (RFW page\ndata; read-only). Gate: the `conditionals` page's read scope.",
         "operationId": "admin_conditionals",
         "responses": {
           "200": {
@@ -245,7 +245,7 @@
         "tags": [
           "exchange8-admin"
         ],
-        "summary": "`POST /v1/admin/pegs` — the live peg table (RFW page data; read-only).\nGate: the `pegs` page's read scope.",
+        "summary": "`POST /v1/admin/pegs` - the live peg table (RFW page data; read-only).\nGate: the `pegs` page's read scope.",
         "operationId": "admin_pegs",
         "responses": {
           "200": {
@@ -887,7 +887,7 @@
         "tags": [
           "exchange8-admin"
         ],
-        "summary": "`GET /v1/admin/ui/{page}` — the declared RFW page definition (Dash\nrenders it; gated by the page's Shield action; 404 for undeclared\nslugs) — the refdata `handlers::admin_ui_page` pattern.",
+        "summary": "`GET /v1/admin/ui/{page}` - the declared RFW page definition (Dash\nrenders it; gated by the page's Shield action; 404 for undeclared\nslugs) - the refdata `handlers::admin_ui_page` pattern.",
         "operationId": "admin_ui_page",
         "responses": {
           "200": {

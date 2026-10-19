@@ -5,15 +5,15 @@
 
 //! Exchange8:OMS order types & algorithms.
 //!
-//! - **Conditional/OCO/bracket**: one-cancels-other groups — a leg
+//! - **Conditional/OCO/bracket**: one-cancels-other groups - a leg
 //!   triggering (or filling) cancels its siblings; brackets are
 //!   take-profit + stop-loss pairs around a parent position.
 //! - **Multi-leg (complex) orders**: atomic all-or-none across legs
-//!   (options spreads) — a leg book tracks per-leg fillable qty; the
+//!   (options spreads) - a leg book tracks per-leg fillable qty; the
 //!   order executes only when every leg can fill simultaneously.
 //! - **TWAP/VWAP/POV algos**: slice schedulers emitting child orders
 //!   (OMS-level, per design §3 of the order-types doc).
-//! - **MOC/MOO**: auction participation orders — queued to the
+//! - **MOC/MOO**: auction participation orders - queued to the
 //!   auction uncross, never book-resting.
 //! - **Iceberg slicing**: reserve accounting + slice re-arm.
 //! - **Quote cache**: per-instrument BBO/EBBO snapshots driving peg
@@ -21,7 +21,7 @@
 //! - **ME id sequence lease + idempotency**: child-order id leasing
 //!   with dedup on client idempotency keys.
 //!
-//! Design: `design/sentin8-exchange8-order-types-technical-design.md` §2–§3,
+//! Design: `design/sentin8-exchange8-order-types-technical-design.md` §2-§3,
 //! `design/sentin8-exchange8-oms-technical-design.md` §4.
 
 use std::collections::HashMap;
@@ -52,7 +52,7 @@ pub enum OcoKind {
 /// One-cancels-other group: first leg to fire cancels the sibling.
 pub struct OcoGroup {
     legs: Vec<OcoLeg>,
-    /// Set when one leg fired — group terminal.
+    /// Set when one leg fired - group terminal.
     fired: Option<u64>,
 }
 
@@ -65,7 +65,7 @@ impl OcoGroup {
     /// Returns (executed_id, cancelled_ids).
     pub fn on_fire(&mut self, order_id: u64) -> (u64, Vec<u64>) {
         if self.fired.is_some() {
-            // Already terminal — no-op (idempotent re-fire).
+            // Already terminal - no-op (idempotent re-fire).
             return (0, Vec::new());
         }
         if !self.legs.iter().any(|l| l.order_id == order_id) {
@@ -139,7 +139,7 @@ impl OcoRegistry {
     }
 
     /// External cancel of one leg (client request): siblings also cancel
-    /// (bracket semantics — a broken bracket is fully withdrawn).
+    /// (bracket semantics - a broken bracket is fully withdrawn).
     pub fn on_cancel(&mut self, order_id: u64) -> Vec<u64> {
         let Some(&idx) = self.index.get(&order_id) else {
             return Vec::new();
@@ -377,7 +377,7 @@ pub enum AuctionKind {
 /// Auction queue: orders held for the uncross (never book-resting).
 pub struct AuctionQueue {
     kind: AuctionKind,
-    /// (order_id, qty, side) — market-style imbalance contribution.
+    /// (order_id, qty, side) - market-style imbalance contribution.
     orders: Vec<(u64, Qty, bool)>,
 }
 
@@ -393,7 +393,7 @@ impl AuctionQueue {
         self.orders.push((order_id, qty, side_bid));
     }
 
-    /// Imbalance (bid qty − ask qty) — feeds the auction indicative feed.
+    /// Imbalance (bid qty − ask qty) - feeds the auction indicative feed.
     pub fn imbalance(&self) -> i128 {
         self.orders
             .iter()

@@ -76,7 +76,7 @@ pub struct PegOrder {
     pub side: PegSide,
     pub quote: Quote,
     pub offset: i128,
-    /// Client limit — the peg never prices through it; reaching it
+    /// Client limit - the peg never prices through it; reaching it
     /// converts the peg to a plain limit order.
     pub limit: Price,
     /// Terminal conversion flag: once true the peg is a limit order.
@@ -108,7 +108,7 @@ impl PegOrder {
         self.state
     }
 
-    /// The peg's status key — the admin/RFW projection of the state
+    /// The peg's status key - the admin/RFW projection of the state
     /// (`on_hold|executing|modifying|pending|cancelled`, the lowercase
     /// keys the `pegs` admin page and the peg events carry).
     pub fn status_key(&self) -> &'static str {
@@ -133,7 +133,7 @@ impl PegOrder {
         }
         self.quote = quote;
         if self.converted_to_limit {
-            // A converted peg is a plain limit order — no repricing.
+            // A converted peg is a plain limit order - no repricing.
             return PegAction::None;
         }
         match compute_peg_price(
@@ -222,7 +222,7 @@ impl PegOrder {
         CancelCause::MeKilled
     }
 
-    /// Client cancel — valid in any non-terminal state.
+    /// Client cancel - valid in any non-terminal state.
     pub fn cancel(&mut self) -> Result<CancelCause, &'static str> {
         if self.state == PegState::Cancelled {
             return Err("already cancelled");

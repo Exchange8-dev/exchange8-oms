@@ -10,22 +10,22 @@
 //! semantics exactly (design OMS §4.3):
 //!
 //! - `Primary`   : bid + offset / ask − offset (join own side)
-//! - `Market`    : ask − offset (bid side) / bid + offset (ask side) — join
+//! - `Market`    : ask − offset (bid side) / bid + offset (ask side) - join
 //!                 the *opposite* side, with a monotonic ratchet (never
 //!                 reprice worse than the working price)
-//! - `Midpoint`  : (bid+ask)/2 + offset — only when bid ≠ ask and both live;
+//! - `Midpoint`  : (bid+ask)/2 + offset - only when bid ≠ ask and both live;
 //!                 validated against the **doubled tick** grid
 //! - `Darkpool`  : midpoint formula, always Hidden
 //!
 //! No quote / one-sided quote → the peg stays `OnHold` (ack at limit).
 //! A visible peg reaching its limit **converts to a plain limit order**.
 //!
-//! Design: `design/sentin8-exchange8-oms-technical-design.md` §4.3–4.4.
+//! Design: `design/sentin8-exchange8-oms-technical-design.md` §4.3-4.4.
 
 use exchange8::fixed::{on_doubled_equity_tick, Price};
 
 /// Peg type (mirror of the contracts PegType; kept local for formula
-/// clarity — the OMS owns the pricing domain).
+/// clarity - the OMS owns the pricing domain).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PegKind {
     /// Join own side: bid + offset / ask − offset.
@@ -73,9 +73,9 @@ pub enum PegSide {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PegError {
-    /// No quote or one-sided quote — the peg stays OnHold.
+    /// No quote or one-sided quote - the peg stays OnHold.
     NoQuote,
-    /// Crossed/locked quote — unsafe to price from.
+    /// Crossed/locked quote - unsafe to price from.
     CrossedQuote,
     /// Midpoint result violates the doubled-tick grid.
     OffDoubledTick,
@@ -88,16 +88,16 @@ pub enum PegError {
 pub enum PegOutcome {
     /// Price computed and actionable; submit/modify the slice at this price.
     Actionable(Price),
-    /// Not actionable — hold (or pull the working slice); ack at limit.
+    /// Not actionable - hold (or pull the working slice); ack at limit.
     Hold,
-    /// The peg has reached its limit — it becomes a plain limit order at
+    /// The peg has reached its limit - it becomes a plain limit order at
     /// `limit` and stops repricing (conversion rule).
     ConvertToLimit(Price),
 }
 
 /// Compute the peg price for one evaluation (design OMS §4.3 table).
 ///
-/// `offset` is in price ticks (raw units at the instrument's scale) —
+/// `offset` is in price ticks (raw units at the instrument's scale) -
 /// `PegDifference` (FIX 211) sign semantics: positive offset moves the price
 /// *away* from the inside for Primary (bid+offset = more aggressive buy).
 pub fn compute_peg_price(
@@ -129,7 +129,7 @@ pub fn compute_peg_price(
             if bid.raw == ask.raw {
                 return Ok(PegOutcome::Hold);
             }
-            // (bid+ask)/2 + offset — integer division truncates down, the
+            // (bid+ask)/2 + offset - integer division truncates down, the
             // engine used the same floor math on raw tick units.
             let mid = (bid.raw + ask.raw) / 2 + offset;
             // Doubled-tick validation: the midpoint of a doubled grid is a
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn market_peg_ratchet_never_worse() {
-        // Working at 10.10; new quote would compute 10.00 — keep 10.10.
+        // Working at 10.10; new quote would compute 10.00 - keep 10.10.
         let out = compute_peg_price(
             PegKind::Market,
             PegSide::Bid,
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn midpoint_on_doubled_tick_grid() {
-        // bid 9.98 / ask 10.02 → mid 10.00 = 100_000 raw — on the doubled
+        // bid 9.98 / ask 10.02 → mid 10.00 = 100_000 raw - on the doubled
         // (200-tick = 0.02) grid.
         let out = compute_peg_price(
             PegKind::Midpoint,
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn midpoint_off_grid_rejected() {
-        // bid 10.00 / ask 10.02 → mid 10.01 = 100_100 — half of the doubled
+        // bid 10.00 / ask 10.02 → mid 10.01 = 100_100 - half of the doubled
         // tick (0.01 vs required 0.02 grid) → compute error.
         let out = compute_peg_price(
             PegKind::Midpoint,
