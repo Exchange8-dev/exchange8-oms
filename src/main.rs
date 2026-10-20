@@ -18,11 +18,11 @@
 // (master design §11.1). Workers (bus consumers, session
 // supervisors, purge jobs) are in-process tokio tasks, so the
 mod events;
+mod openapi;
 mod order_types;
 mod peg_machine;
 mod pegs;
 mod registration;
-mod openapi;
 mod runtime;
 mod stats;
 mod triggers;

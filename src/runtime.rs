@@ -717,19 +717,18 @@ where
                     .await;
                 continue;
             }
-            let payload =
-                match serde_json::from_value::<exchange8::contracts::events::BboUpdated>(
-                    msg.payload.clone(),
-                ) {
-                    Ok(p) => p,
-                    Err(e) => {
-                        tracing::warn!(error = %e, "oms quote consumer: malformed BBO payload; skipped");
-                        let _ = bus
-                            .ack(QUOTE_STREAM_FAMILY, QUOTE_CONSUMER_GROUP, &msg.message_id)
-                            .await;
-                        continue;
-                    }
-                };
+            let payload = match serde_json::from_value::<exchange8::contracts::events::BboUpdated>(
+                msg.payload.clone(),
+            ) {
+                Ok(p) => p,
+                Err(e) => {
+                    tracing::warn!(error = %e, "oms quote consumer: malformed BBO payload; skipped");
+                    let _ = bus
+                        .ack(QUOTE_STREAM_FAMILY, QUOTE_CONSUMER_GROUP, &msg.message_id)
+                        .await;
+                    continue;
+                }
+            };
             if let Some(senders) = SHARD_SENDERS.get() {
                 let s = shard_of(payload.instrument_id, DEFAULT_SHARDS);
                 if let Some(tx) = senders.get(&s) {
