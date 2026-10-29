@@ -65,9 +65,9 @@ pub fn shard_of(instrument_id: u32, shards: usize) -> usize {
 /// on the `pegs` admin page).
 pub const INSTRUMENT_PEG_CAP: usize = 5_000;
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Shard plane (single writer per instrument shard - DESIGN.md §7)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// One shard's runtime state: the trigger engine + the quote cache + the
 /// peg list. Owned by exactly one task; the mutex guards only cross-task
@@ -602,9 +602,9 @@ async fn shard_loop(
     }
 }
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Quote consumer (Bus → shard queues; DESIGN.md §7 reader task)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// The quote event OMS consumes (the declared market-data vocabulary -
 /// master design §7.1; payload `exchange8::contracts::events::BboUpdated`).
@@ -625,7 +625,7 @@ pub const QUOTE_CONSUMER_GROUP: &str = "exchange8-oms-quotes";
 /// loop - pegs hold their last evaluation (quote-stall semantics,
 /// DESIGN.md §6).
 ///
-/// BUSCONNP-1: the SSE direct-consumer pattern (the hotel8/trade8/
+/// the SSE direct-consumer pattern (the hotel8/trade8/
 /// email8 shape) - one long-lived `GET /v1/consume/sse` connection per
 /// epoch with per-message `POST /v1/ack`. The bus holds the blocking
 /// read server-side on its own dedicated connection; the OMS never
@@ -749,9 +749,9 @@ where
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Algo scheduler - the durable `oms.algo_order.state` binding (DESIGN.md §3)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// The algo scheduler pump cadence (bounded; every step is idempotent per
 /// parent - a re-delivered pump hits the guarded insert/state predicate).
@@ -1071,9 +1071,9 @@ pub async fn algo_state_transition(
     }))
 }
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Admin RFW handlers (declared pages + data endpoints + algo surface)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// The correlation id from the platform middleware (`X-Sentin8-Correlation-
 /// Id`; a missing header - direct CLI/dev calls - generates one so every
@@ -1390,9 +1390,9 @@ async fn pause_resume(
     algo_state_transition(&state, &a, &headers, algo_id, from, to, op).await
 }
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // RFW page definitions (refdata `admin_ui.rs` pattern - pure data)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// The RFW page definitions (the registration-declared pages + the algo
 /// surface). Icons are Material Icons code points (hex), never names.

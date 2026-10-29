@@ -463,7 +463,7 @@ router mounts health and the shared Shield admin API only.
 | Errors | `exchange8_trigger_already_fired` | HTTP 409 | registered error code |
 | Health | `GET /v1/health` | unauthenticated (shell) | liveness for Sentin8:Captain |
 | Out | Bus `POST /v1/produce` | M2M `sentin8:bus:produce` | workloads `exchange8:oms`/`oms`, plus `sentin8:stat:measure` |
-| Out (consume) | Bus `GET /v1/consume/sse` + `POST /v1/ack` | M2M `sentin8:bus:consume` | quote consumer (family `exchange8`, group `exchange8-oms-quotes`) - the SSE direct-consumer pattern (BUSCONNP-1): one long-lived stream connection, server-driven delivery, no per-second polling. |
+| Out (consume) | Bus `GET /v1/consume/sse` + `POST /v1/ack` | M2M `sentin8: bus: consume` | quote consumer (family `exchange8`, group `exchange8-oms-quotes`) - the SSE direct-consumer pattern : one long-lived stream connection, server-driven delivery, no per-second polling. |
 | Out (stat) | Stat `POST /v1/m/metric` (via `collect_fire_and_forget`) | M2M `sentin8:stat:measure` | `oms.supervision` gauges - pegs working / conditionals held / algo parents running / child slices issued (the `{leaf}-policy` workload pair the policy boot initialized) |
 | Out | Sys `POST /v1/audit` | M2M `sentin8:sys:audit:write` | workload `oms-audit` |
 | TLS | `GET /v1/resolve/hostname` (Sys owner API) | M2M `sentin8:sys:instances:read` | workload `exchange8-oms-tls` (database-free resolve) |
@@ -506,7 +506,7 @@ their last evaluation (quote-stall semantics, §6) in the interim. The
 consumer rides the Bus SSE surface (`GET /v1/consume/sse`): the bus
 holds the blocking read server-side on its own dedicated connection -
 the OMS never issues short-interval `POST /v1/consume` blocking polls
-(the BUSCONNP-1 defect class: a 1s-block poll loop that re-fires the
+(the defect class: a 1s-block poll loop that re-fires the
 instant an empty batch returns saturates the bus's shared command
 connection and pins the GLIDE watchdog's pending count above its
 overload threshold permanently).
