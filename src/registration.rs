@@ -8,8 +8,6 @@
 //! Output via `--print-registration` (see the platform
 //! `sentin8-service-self-registration-design.md`).
 
-use utoipa::OpenApi;
-
 use sentin8::registration::{
     AdminScope, AdminUi, AdminUiPage, ErrorCode, M2mGrant, PgRole, PolicySetDecl, Registration,
     RelationDecl, SqlMigration,
@@ -174,11 +172,22 @@ const M2M_GRANTS: &[M2mGrant] = &[
 
 const SQL_1_INIT: &str = include_str!("../sql/init.sql");
 
-fn empty_openapi() -> serde_json::Value {
-    serde_json::to_value(crate::openapi::OmsOpenApi::openapi()).unwrap_or(serde_json::Value::Null)
-}
+// The utoipa dump lives OUTSIDE this file: main.rs provides it as a
+// function-REFERENCE injected through the Registration struct
+// (`sentin8::registration::Registration.openapi` field). This file must not
+// name crate::openapi directly - tests embed it via
+// #[path = "../src/registration.rs"] into harness crates that carry no
+// openapi module; the harnesses never call `Registration::print`, so the
+// pointer is only referenced, never invoked, there.
 
 pub fn print(section: Option<String>) -> anyhow::Result<()> {
+    // The utoipa dump comes from the BINARY crate's static and only when
+    // building the binary: the test harnesses that embed this file cannot
+    // see main-only symbols, and they never print a spec.
+    #[cfg(not(test))]
+    let dump: fn() -> serde_json::Value = crate::OPENAPI_DUMP;
+    #[cfg(test)]
+    let dump: fn() -> serde_json::Value = || serde_json::Value::Null;
     let reg = Registration {
         service_type: "exchange8:oms",
         subdomain: "exchange8-oms",
@@ -203,11 +212,11 @@ pub fn print(section: Option<String>) -> anyhow::Result<()> {
         service_actions: None,
         m2m_grants: Some(M2M_GRANTS),
         openapi_url: "/openapi.json",
-        openapi: empty_openapi,
+        openapi: dump,
         policies: POLICIES,
         relations: RELATIONS,
         event_triggers: &[],
         schedules: &[],
     };
-    sentin8::registration::print_registration(section, &reg, empty_openapi)
+    sentin8::registration::print_registration(section, &reg, dump)
 }

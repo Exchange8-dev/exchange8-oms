@@ -27,6 +27,15 @@ mod runtime;
 mod stats;
 mod triggers;
 
+// The utoipa dump, as a plain function pointer for registration.rs (which
+// cannot name crate::openapi - the embedded test harnesses see only a subset
+// of the module tree; see registration.rs). The OpenApi trait import here
+// provides the `.openapi()` associated fn (utoipa's derive generates it).
+static OPENAPI_DUMP: fn() -> serde_json::Value = || {
+    use utoipa::OpenApi as _;
+    serde_json::to_value(openapi::OmsOpenApi::openapi()).unwrap_or(serde_json::Value::Null)
+};
+
 fn extend_router(
     app: axum::Router<std::sync::Arc<sentin8::shell::AppState>>,
     _state: std::sync::Arc<sentin8::shell::AppState>,
