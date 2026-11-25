@@ -6,7 +6,8 @@
       "telemetry_property": {
         "slug": "oms",
         "name": "Exchange8:OMS Telemetry"
-      }
+      },
+      "exposure": "internal"
     }
   ]
 }
